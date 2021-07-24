@@ -1,6 +1,6 @@
-package io.confluent.data.csid.data.governance.lineage.producer;
+package io.confluent.csid.data.governance.lineage.producer;
 
-import io.confluent.data.lineage.utils.BlockUtils;
+import io.confluent.csid.data.governance.lineage.common.utils.BlockUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;

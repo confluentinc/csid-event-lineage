@@ -1,7 +1,7 @@
-package io.confluent.data.csid.data.governance.lineage.miner.dao.impl;
+package io.confluent.csid.data.governance.lineage.miner.dao.impl;
 
-import io.confluent.data.lineage.Block;
-import io.confluent.data.csid.data.governance.lineage.miner.dao.BlockDAO;
+import io.confluent.csid.data.governance.lineage.common.Block;
+import io.confluent.csid.data.governance.lineage.miner.dao.BlockDAO;
 
 import java.util.concurrent.ConcurrentHashMap;
 

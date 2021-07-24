@@ -1,9 +1,9 @@
-package io.confluent.data.csid.data.governance.lineage.miner;
+package io.confluent.csid.data.governance.lineage.miner;
 
-import io.confluent.data.lineage.Block;
-import io.confluent.data.lineage.VerifyResponse;
-import io.confluent.data.csid.data.governance.lineage.miner.dao.BlockDAO;
-import io.confluent.data.lineage.utils.BlockChainUtils;
+import io.confluent.csid.data.governance.lineage.common.Block;
+import io.confluent.csid.data.governance.lineage.common.VerifyResponse;
+import io.confluent.csid.data.governance.lineage.common.utils.BlockChainUtils;
+import io.confluent.csid.data.governance.lineage.miner.dao.BlockDAO;
 import lombok.NonNull;
 import org.apache.kafka.streams.state.HostInfo;
 import org.eclipse.jetty.server.Server;

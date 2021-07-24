@@ -1,8 +1,8 @@
-package io.confluent.data.csid.data.governance.lineage.miner;
+package io.confluent.csid.data.governance.lineage.miner;
 
-import io.confluent.data.lineage.Block;
-import io.confluent.data.csid.data.governance.lineage.miner.dao.impl.KeyValueStoreDAO;
-import io.confluent.data.lineage.utils.BlockUtils;
+import io.confluent.csid.data.governance.lineage.common.Block;
+import io.confluent.csid.data.governance.lineage.common.utils.BlockUtils;
+import io.confluent.csid.data.governance.lineage.miner.dao.impl.KeyValueStoreDAO;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.HostInfo;

@@ -3,6 +3,7 @@ package io.confluent.csid.data.governance.lineage.common.utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -38,28 +39,62 @@ public class BlockUtils {
         return messageDigest.digest(data.getBytes(StandardCharsets.UTF_8));
     }
 
-    public static Properties loadProperties(final String filename, final Class<?> rcsClass) {
+    public static Properties loadProperties(final String filepath) {
         final Properties streamsConfiguration = new Properties();
+
         try {
-            streamsConfiguration.load(rcsClass.getClassLoader().getResourceAsStream(filename));
+            streamsConfiguration.load(new FileReader(filepath));
         } catch (IOException e) {
             LOGGER.error(e.toString());
             System.exit(1);
             return null;
         }
 
+        final String clusterInfo = streamsConfiguration.getProperty("cluster.info");
+        if (clusterInfo != null) {
+            final Properties clusterInfos = loadProperties(clusterInfo);
+
+            streamsConfiguration.remove("cluster.info");
+            streamsConfiguration.putAll(clusterInfos);
+        }
+
         return streamsConfiguration;
     }
 
-    public static Map<String, Object> loadConfiguration(final Map<String, ?> properties, final String prefix) {
-        return properties
+    public static Properties loadProperties(final String filename, final Class<?> rcsClass) {
+        return loadProperties(rcsClass.getClassLoader().getResource(filename).getPath());
+    }
+
+    public static Map<String, Object> filterConfiguration(final Map<String, ?> properties, final String prefix) {
+        final Map<String, Object> values = properties
                 .entrySet()
                 .stream()
                 .filter(e -> e.getKey().startsWith(prefix))
                 .collect(Collectors.toMap((e) -> e.getKey().substring(prefix.length()), Map.Entry::getValue));
+
+        if (values.containsKey("cluster.info")) {
+            final String clusterInfo = (String) values.get("cluster.info");
+            if (clusterInfo != null) {
+                final Map<String, Object> clusterInfos = loadConfiguration(clusterInfo);
+
+                properties.remove("cluster.info");
+                values.putAll(clusterInfos);
+            }
+        }
+
+        return values;
     }
 
-    public static Map<String, Object> loadConfigurationFromFile(final String filename, final Class<?> rcsClass) {
+    public static Map<String, Object> loadConfiguration(final String filepath) {
+        final Properties streamsConfiguration = loadProperties(filepath);
+
+        final Map<String, Object> config = new HashMap<>();
+        streamsConfiguration.forEach((k, v) -> config.put(k.toString(), v));
+
+        return config;
+    }
+
+    public static Map<String, Object> loadConfigurationFromResource(final String filename, final Class<?> rcsClass) {
         final Properties streamsConfiguration = loadProperties(filename, rcsClass);
 
         final Map<String, Object> config = new HashMap<>();

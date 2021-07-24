@@ -54,7 +54,7 @@ public class KafkaBlockProducer implements BlockProducer {
         final String shouldMineStr = (String)configs.get(MINER_MINE);
         shouldMine = (shouldMineStr != null && !shouldMineStr.isEmpty() && Boolean.parseBoolean(shouldMineStr));
 
-        Map<String, Object> blockProperties = BlockUtils.loadConfiguration(configs, BLOCK_PRODUCER_PREFIX);
+        Map<String, Object> blockProperties = BlockUtils.filterConfiguration(configs, BLOCK_PRODUCER_PREFIX);
         blockProperties.put("key.serializer", StringSerializer.class.getCanonicalName());
         blockProperties.put("value.serializer", KafkaJsonSchemaSerializer.class.getCanonicalName());
 

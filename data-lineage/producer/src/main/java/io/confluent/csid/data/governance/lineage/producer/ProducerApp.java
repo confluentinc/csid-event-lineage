@@ -1,4 +1,4 @@
-package io.confluent.data.csid.data.governance.lineage.producer;
+package io.confluent.csid.data.governance.lineage.producer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
+    <groupId>io.confluent.csid.data.governance.lineage</groupId>
     <artifactId>consumer</artifactId>
 
     <properties>
@@ -47,8 +48,8 @@
             <version>1.7.31</version>
         </dependency>
         <dependency>
-            <groupId>org.example</groupId>
-            <artifactId>Common</artifactId>
+            <groupId>io.confluent.csid.data.governance.lineage</groupId>
+            <artifactId>common</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>

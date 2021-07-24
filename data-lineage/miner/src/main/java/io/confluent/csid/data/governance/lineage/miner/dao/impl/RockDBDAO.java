@@ -1,9 +1,9 @@
-package io.confluent.data.csid.data.governance.lineage.miner.dao.impl;
+package io.confluent.csid.data.governance.lineage.miner.dao.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.confluent.data.lineage.Block;
-import io.confluent.data.csid.data.governance.lineage.miner.dao.BlockDAO;
+import io.confluent.csid.data.governance.lineage.common.Block;
+import io.confluent.csid.data.governance.lineage.miner.dao.BlockDAO;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.rocksdb.FlushOptions;

@@ -1,6 +1,6 @@
-package io.confluent.data.csid.data.governance.lineage.consumer;
+package io.confluent.csid.data.governance.lineage.consumer;
 
-import io.confluent.data.lineage.utils.BlockUtils;
+import io.confluent.csid.data.governance.lineage.common.utils.BlockUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;

@@ -1,6 +1,6 @@
-package io.confluent.data.csid.data.governance.lineage.miner;
+package io.confluent.csid.data.governance.lineage.miner;
 
-import io.confluent.data.csid.data.governance.lineage.miner.dao.impl.RockDBDAO;
+import io.confluent.csid.data.governance.lineage.miner.dao.impl.RockDBDAO;
 import org.apache.kafka.streams.state.HostInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

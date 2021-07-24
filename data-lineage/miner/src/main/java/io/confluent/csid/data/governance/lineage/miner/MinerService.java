@@ -1,7 +1,7 @@
-package io.confluent.data.csid.data.governance.lineage.miner;
+package io.confluent.csid.data.governance.lineage.miner;
 
-import io.confluent.data.lineage.Block;
-import io.confluent.data.lineage.utils.BlockUtils;
+import io.confluent.csid.data.governance.lineage.common.Block;
+import io.confluent.csid.data.governance.lineage.common.utils.BlockUtils;
 import io.confluent.kafka.streams.serdes.json.KafkaJsonSchemaSerde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -33,7 +33,7 @@ public class MinerService {
     public void start() {
         LOGGER.info("Starting Stream service....");
 
-        final Map<String, ?> properties = BlockUtils.loadConfigurationFromFile("minerapp.properties", MinerService.class);
+        final Map<String, ?> properties = BlockUtils.loadConfigurationFromResource("minerapp.properties", MinerService.class);
 
         final KafkaJsonSchemaSerde<Block> serde = new KafkaJsonSchemaSerde<>();
         serde.configure(properties, false);
