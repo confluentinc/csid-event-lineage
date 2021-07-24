@@ -1,0 +1,16 @@
+io/confluent/csid/data/governance/lineage/common/BlockProducer.class
+io/confluent/csid/data/governance/lineage/common/VerifyResponse.class
+io/confluent/csid/data/governance/lineage/common/BlockDeserializer.class
+io/confluent/csid/data/governance/lineage/common/serializers/StringSerializer.class
+io/confluent/csid/data/governance/lineage/common/utils/SchemaRegistryClientConfig.class
+io/confluent/csid/data/governance/lineage/common/producers/KafkaBlockProducer.class
+io/confluent/csid/data/governance/lineage/common/utils/BlockChainUtils$BlockSupplier.class
+io/confluent/csid/data/governance/lineage/common/ValidationException.class
+io/confluent/csid/data/governance/lineage/common/BlockSerializer.class
+io/confluent/csid/data/governance/lineage/common/producers/RestBlockProducer.class
+io/confluent/csid/data/governance/lineage/common/utils/BlockChainUtils.class
+io/confluent/csid/data/governance/lineage/common/rest/MinerRestClient.class
+io/confluent/csid/data/governance/lineage/common/utils/SchemaRegistryUtils.class
+io/confluent/csid/data/governance/lineage/common/Block.class
+io/confluent/csid/data/governance/lineage/common/utils/BlockUtils.class
+io/confluent/csid/data/governance/lineage/common/serializers/StringDeserializer.class
