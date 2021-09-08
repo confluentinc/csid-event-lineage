@@ -43,12 +43,12 @@ public class Block {
 
     public Block() {}
 
-    public Block(@NonNull  String data) {
+    public Block(@NonNull String data) {
         this(data, GENESIS_HASH);
     }
 
     public Block(@NonNull byte[] data) throws NoSuchAlgorithmException {
-        this(data, "0");
+        this(data, GENESIS_HASH);
     }
 
     public Block(@NonNull String data, @NonNull String previousHash) {
