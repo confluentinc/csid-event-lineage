@@ -48,7 +48,8 @@ public class ConsumerApp {
                     }
                     consumer.commitSync();
                 } catch (SerializationException e) {
-                    Pattern pattern = Pattern.compile("Error deserializing key\\/value for partition aTopic-([0-9])* at offset ([0-9])*. If needed, please seek past the record to continue consumption.");
+                    Pattern pattern = Pattern.compile("Error deserializing key\\/value for partition aTopic-(\\d*) at offset (\\d*)."
+                        + " If needed, please seek past the record to continue consumption.");
                     Matcher matcher = pattern.matcher(e.getMessage());
                     if (matcher.find()) {
                         final int partition = Integer.parseInt(matcher.group(1));
@@ -58,7 +59,7 @@ public class ConsumerApp {
                         int lastOffset = partitionOffsets.computeIfAbsent(partition, (p) -> offset);
                         if (lastOffset > offset) {
                             consumer.commitSync(new HashMap<>() {{
-                                put(new TopicPartition(topicName, partition) , new OffsetAndMetadata(lastOffset+1));
+                                put(new TopicPartition(topicName, partition), new OffsetAndMetadata(lastOffset + 1));
                             }});
                             LOGGER.info("Commit partition '{}' to offset '{}:{}'.", partition, offset, lastOffset);
                             partitionOffsets.put(partition, -1);
