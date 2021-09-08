@@ -18,7 +18,7 @@ public class KeyValueStoreDAO implements BlockDAO {
 
     @Override
     public void put(Block block) {
-        store.put(block.getHash(), block);
+        store.put(block.getData(), block);
     }
 
     @Override
