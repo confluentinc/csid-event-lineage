@@ -31,8 +31,8 @@ public class BlockUtils {
 
     public static String getDataHash(final byte[] data) throws NoSuchAlgorithmException {
         return Base64
-            .getUrlEncoder()
-            .encodeToString(messageDigest.digest(data));
+                .getUrlEncoder()
+                .encodeToString(messageDigest.digest(data));
     }
 
     public static byte[] getDigest(final String data) throws NoSuchAlgorithmException {
@@ -67,10 +67,10 @@ public class BlockUtils {
 
     public static Map<String, Object> filterConfiguration(final Map<String, ?> properties, final String prefix) {
         final Map<String, Object> values = properties
-            .entrySet()
-            .stream()
-            .filter(e -> e.getKey().startsWith(prefix))
-            .collect(Collectors.toMap((e) -> e.getKey().substring(prefix.length()), Map.Entry::getValue));
+                .entrySet()
+                .stream()
+                .filter(e -> e.getKey().startsWith(prefix))
+                .collect(Collectors.toMap((e) -> e.getKey().substring(prefix.length()), Map.Entry::getValue));
 
         if (values.containsKey("cluster.info")) {
             final String clusterInfo = (String) values.get("cluster.info");
