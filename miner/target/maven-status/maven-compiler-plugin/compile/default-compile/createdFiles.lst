@@ -5,7 +5,7 @@ io/confluent/csid/data/governance/lineage/miner/dao/impl/RockDBDAO.class
 io/confluent/csid/data/governance/lineage/miner/MinerRestService.class
 io/confluent/csid/data/governance/lineage/miner/MinerRestService$1.class
 io/confluent/csid/data/governance/lineage/miner/dao/impl/InMemoryDAO.class
-io/confluent/csid/data/governance/lineage/miner/dao/impl/KeyValueStoreDAO.class
 io/confluent/csid/data/governance/lineage/miner/MinerApp.class
+io/confluent/csid/data/governance/lineage/miner/dao/impl/KeyValueStoreDAO.class
 io/confluent/csid/data/governance/lineage/miner/MinerService.class
 io/confluent/csid/data/governance/lineage/miner/MinerApp$1.class

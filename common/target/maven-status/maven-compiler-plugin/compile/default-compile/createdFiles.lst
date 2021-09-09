@@ -1,6 +1,6 @@
 io/confluent/csid/data/governance/lineage/common/BlockProducer.class
-io/confluent/csid/data/governance/lineage/common/VerifyResponse.class
 io/confluent/csid/data/governance/lineage/common/BlockDeserializer.class
+io/confluent/csid/data/governance/lineage/common/VerifyResponse.class
 io/confluent/csid/data/governance/lineage/common/serializers/StringSerializer.class
 io/confluent/csid/data/governance/lineage/common/utils/SchemaRegistryClientConfig.class
 io/confluent/csid/data/governance/lineage/common/producers/KafkaBlockProducer.class
