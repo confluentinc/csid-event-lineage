@@ -31,7 +31,7 @@ public class BlockUtils {
 
     public static String getDataHash(final byte[] data) throws NoSuchAlgorithmException {
         return Base64
-                .getEncoder()
+                .getUrlEncoder()
                 .encodeToString(messageDigest.digest(data));
     }
 

@@ -16,7 +16,7 @@ public class InMemoryDAO implements BlockDAO {
 
     @Override
     public void put(Block block) {
-        blocks.put(block.getHash(), block);
+        blocks.put(block.getData(), block);
     }
 
     @Override
