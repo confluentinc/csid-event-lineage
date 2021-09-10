@@ -8,6 +8,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+<!--    <parent>-->
+<!--        <groupId>io.confluent</groupId>-->
+<!--        <artifactId>rest-utils-parent</artifactId>-->
+<!--        <version>6.0.1</version>-->
+<!--    </parent>-->
+
     <groupId>io.confluent.csid.data.governance</groupId>
     <artifactId>lineage</artifactId>
     <packaging>pom</packaging>
@@ -15,11 +21,11 @@
 
     <inceptionYear>2021</inceptionYear>
 
-<!--    <parent>-->
-<!--        <groupId>io.confluent</groupId>-->
-<!--        <artifactId>rest-utils-parent</artifactId>-->
-<!--        <version>6.0.1</version>-->
-<!--    </parent>-->
+    <organization>
+        <name>Confluent, Inc.</name>
+        <url>http://confluent.io</url>
+    </organization>
+
 
     <modules>
         <module>common</module>
@@ -27,13 +33,6 @@
         <module>producer</module>
         <module>consumer</module>
     </modules>
-
-    <inceptionYear>2020</inceptionYear>
-
-    <organization>
-        <name>Confluent, Inc.</name>
-        <url>http://confluent.io</url>
-    </organization>
 
     <repositories>
         <repository>
