@@ -2,5 +2,6 @@
 
 common {
   slackChannel = 'csid-build'
+  downStreamValidate = false
 }
 
