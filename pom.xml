@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~  Copyright 2021 Confluent Inc.
+  -->
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <groupId>io.confluent.csid.data.governance</groupId>
-    <artifactId>lineage</artifactId>
-    <packaging>pom</packaging>
-    <version>1.0-SNAPSHOT</version>
 
 <!--    <parent>-->
 <!--        <groupId>io.confluent</groupId>-->
@@ -15,19 +14,25 @@
 <!--        <version>6.0.1</version>-->
 <!--    </parent>-->
 
+    <groupId>io.confluent.csid.data.governance</groupId>
+    <artifactId>lineage</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0-SNAPSHOT</version>
+
+    <inceptionYear>2021</inceptionYear>
+
+    <organization>
+        <name>Confluent, Inc.</name>
+        <url>http://confluent.io</url>
+    </organization>
+
+
     <modules>
         <module>common</module>
         <module>miner</module>
         <module>producer</module>
         <module>consumer</module>
     </modules>
-
-    <inceptionYear>2020</inceptionYear>
-
-    <organization>
-        <name>Confluent, Inc.</name>
-        <url>http://confluent.io</url>
-    </organization>
 
     <repositories>
         <repository>
@@ -46,5 +51,15 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
     </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>3.7.1</version>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
