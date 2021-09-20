@@ -66,4 +66,8 @@ public class RockDBDAO implements BlockDAO {
 
         return null;
     }
+
+    public void close() {
+        rocksDB.close();
+    }
 }
