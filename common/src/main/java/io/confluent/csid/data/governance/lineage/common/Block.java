@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 
+@EqualsAndHashCode
 public class Block {
     private final static Logger LOGGER = LoggerFactory.getLogger(Block.class);
     private final static String GENESIS_HASH = "0";
