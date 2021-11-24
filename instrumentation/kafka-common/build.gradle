@@ -1,0 +1,27 @@
+dependencies {
+    compileOnly("org.apache.kafka:kafka-clients:${versions.kafka}")
+    compileOnly("com.github.wnameless.json:json-flattener:${versions.jsonFlattener}")
+    compileOnly("com.fasterxml.jackson.core:jackson-databind")
+
+    compileOnly("io.opentelemetry:opentelemetry-sdk:${versions.opentelemetry}")
+    compileOnly("io.opentelemetry.javaagent:opentelemetry-javaagent-instrumentation-api:${versions.opentelemetryJavaagentAlpha}")
+    compileOnly("io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${versions.opentelemetryJavaagentAlpha}")
+    compileOnly("org.projectlombok:lombok:${versions.lombok}")
+    annotationProcessor("org.projectlombok:lombok:${versions.lombok}")
+
+    testCompileOnly("org.projectlombok:lombok:${versions.lombok}")
+    testAnnotationProcessor("org.projectlombok:lombok:${versions.lombok}")
+
+    // test dependencies
+    testImplementation("io.opentelemetry.javaagent:opentelemetry-testing-common:${versions.opentelemetryJavaagentAlpha}")
+    testImplementation("io.opentelemetry:opentelemetry-sdk-testing:${versions.opentelemetry}")
+    testImplementation("org.assertj:assertj-core:${versions.assertj}")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:${versions.jackson}")
+    testImplementation("com.fasterxml.jackson.core:jackson-core:${versions.jackson}")
+    testImplementation("com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}")
+    testImplementation("com.github.wnameless.json:json-flattener:${versions.jsonFlattener}")
+    testImplementation("com.github.wnameless.json:json-base:${versions.jsonBase}")
+    testImplementation("org.apache.kafka:kafka-clients:${versions.kafka}")
+
+}
+

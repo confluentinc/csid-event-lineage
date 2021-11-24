@@ -1,0 +1,85 @@
+/*
+ * Copyright 2021 Confluent Inc.
+ */
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams;
+
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.PayloadHolder.PAYLOAD_HOLDER;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.Singletons.objectMapper;
+import static net.bytebuddy.matcher.ElementMatchers.hasSuperType;
+import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+import static net.bytebuddy.matcher.ElementMatchers.isPublic;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CommonUtil;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.PayloadHolder;
+import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
+import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
+import net.bytebuddy.asm.Advice;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.matcher.ElementMatcher;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.streams.processor.StateStore;
+
+/**
+ * Capture payload as it's sent to Changelog topic backing state stores before its serialized.
+ * Stores payload as Json string in ThreadLocal {@link PayloadHolder}. and clears ThreadLocal on
+ * method exit.
+ * <p>
+ * Order of execution:
+ * <p>
+ * {@link StateStorePutAdvice#onEnter} - store payload into ThreadLocal
+ * <p>
+ * Concrete {@link StateStore} implementation put() method calls {@link KafkaProducer#send} for
+ * stores backed by topic - takes payload from ThreadLocal and records Produce Span.
+ * <p>
+ * {@link StateStorePutAdvice#onExit} -- clear ThreadLocal
+ */
+public class StateStoreInstrumentation implements TypeInstrumentation {
+
+  @Override
+  public ElementMatcher<TypeDescription> typeMatcher() {
+    return hasSuperType(named("org.apache.kafka.streams.processor.StateStore"));
+  }
+
+  /**
+   * Defines methods to transform using Advice classes.
+   * <p>
+   * Note that Advice class names specified as String to avoid pre-mature class loading
+   */
+  @Override
+  public void transform(TypeTransformer transformer) {
+    transformer.applyAdviceToMethod(
+        isMethod()
+            .and(isPublic())
+            .and(
+                named("put")
+                    .or(named("putIfAbsent"))
+                    .or(named("putIfDifferentValues"))),
+        StateStoreInstrumentation.class.getName() + "$StateStorePutAdvice");
+  }
+
+  @SuppressWarnings("unused")
+  public static class StateStorePutAdvice {
+
+    @Advice.OnMethodEnter(suppress = Throwable.class)
+    public static void onEnter(
+        @Advice.Argument(value = 0) Object key,
+        @Advice.Argument(value = 1) Object value,
+        @Advice.Local("payloadRecorded") boolean payloadRecorded) {
+
+      if (PAYLOAD_HOLDER.get() == null && !(value instanceof byte[])) {
+        CommonUtil.parseAndStorePayloadIntoPayloadHolder(key, value, objectMapper(),
+            PAYLOAD_HOLDER);
+        payloadRecorded = true;
+      }
+    }
+
+    @Advice.OnMethodExit(suppress = Throwable.class)
+    public static void onExit(@Advice.Local("payloadRecorded") boolean payloadRecorded) {
+      if (payloadRecorded) {
+        payloadRecorded = false;
+        PAYLOAD_HOLDER.remove();
+      }
+    }
+  }
+}

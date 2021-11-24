@@ -1,0 +1,36 @@
+=== Introduction
+
+This repository holds OpenTelemetry Instrumentation extensions for Kafka Clients and Kafka Streams.
+Purpose of the extensions is to capture key/value payloads as they are Consumed and Produced by application.
+
+Actual Span creation and propagation is handled by OpenTelemetry Kafka Instrumentation and Agent.
+
+Opentelemetry documentation and sources - https://opentelemetry.io/[main site], https://github.com/open-telemetry[github]
+
+=== Installation
+
+Application should be run with Opentelemetry javaagent and this extension:
+
+----
+java
+-javaagent:/path/to/agent/opentelemetry-javaagent-all.jar
+-Dotel.instrumentation.kafka.experimental-span-attributes=true
+-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true
+-Dotel.javaagent.extensions=/path/to/extension/instrumentation-x.x.x-all.jar
+-jar application.jar
+----
+
+Note use of VM options
+
+----
+-Dotel.instrumentation.kafka.experimental-span-attributes=true
+-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true
+----
+
+for setting up kafka trace propagation to continue single trace across produce / consume events instead of starting new trace on each consume with link to previous produce
+
+=== Compatible OpenTelemetry versions
+
+Both development of extension and installation requires compatible version of main OpenTelemetry Java Instrumentation.
+
+Current build is targeting v1.7.2 of OpenTelemetry instrumentation.
