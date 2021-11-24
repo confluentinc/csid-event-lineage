@@ -1,0 +1,87 @@
+plugins {
+    id "java"
+    /*
+    Instrumentation agent extension mechanism expects a single jar containing everything required
+    for your extension. This also includes any external libraries that your extension uses and
+    cannot access from application classpath (see comment below about `javax.servlet-api` dependency).
+
+    Thus we use Shadow Gradle plugin to package our classes and all required runtime dependencies
+    into a single jar.
+    See https://imperceptiblethoughts.com/shadow/ for more details about Shadow plugin.
+     */
+    id "com.github.johnrengelman.shadow" version "7.1.0"
+
+    id "io.opentelemetry.instrumentation.muzzle-generation" version "0.8.0"
+    id "io.opentelemetry.instrumentation.muzzle-check" version "0.8.0"
+}
+group 'io.confluent.csid.data.governance.lineage.opentel.extension'
+version '0.0.1-SNAPSHOT'
+
+subprojects {
+    version = rootProject.version
+
+    apply plugin: "java"
+
+    ext {
+        versions = [
+                opentelemetry              : "1.7.1",
+                opentelemetryAlpha         : "1.7.2-alpha",
+                opentelemetryJavaagent     : "1.7.2",
+                opentelemetryJavaagentAlpha: "1.7.2-alpha",
+                bytebuddy                  : "1.10.18",
+                guava                      : "30.1-jre",
+                jackson                    : "2.12.3",
+                jsonFlattener              : "0.12.0",
+                jsonBase                   : "2.0.0",
+                kafka                      : "2.6.0",
+                testContainersKafka        : "1.16.2",
+                assertj                    : "3.19.0",
+                awaitility                 : "4.1.1",
+                lombok                     : "1.18.22"
+        ]
+
+        deps = [
+                bytebuddy           : [
+                        "net.bytebuddy:byte-buddy:${versions.bytebuddy}",
+
+                ],
+                autoservice         : [
+                        "com.google.auto.service:auto-service:1.0-rc7",
+                        "com.google.auto:auto-common:0.8",
+                        "com.google.guava:guava:${versions.guava}",
+                ],
+                autoValueAnnotations: "com.google.auto.value:auto-value-annotations:${versions.autoValue}",
+        ]
+    }
+
+    java {
+        withJavadocJar()
+        withSourcesJar()
+    }
+
+
+    repositories {
+        mavenCentral()
+        mavenLocal()
+        maven {
+            name = "sonatype"
+            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+        }
+    }
+
+    dependencies {
+        testImplementation("org.mockito:mockito-core:3.3.3")
+        testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
+        testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.2")
+    }
+
+    tasks {
+        test {
+            useJUnitPlatform()
+        }
+
+        compileJava {
+            options.release.set(11)
+        }
+    }
+}

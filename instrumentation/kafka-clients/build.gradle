@@ -1,0 +1,61 @@
+plugins {
+    id "io.opentelemetry.instrumentation.muzzle-generation"
+    id "io.opentelemetry.instrumentation.muzzle-check"
+    id "maven-publish"
+}
+apply from: "$rootDir/gradle/instrumentation.gradle"
+
+dependencies {
+    implementation(project(":instrumentation:kafka-common"))
+
+    compileOnly("org.apache.kafka:kafka-clients:${versions.kafka}")
+    compileOnly("io.opentelemetry.javaagent:opentelemetry-javaagent:${versions.opentelemetryJavaagent}")
+
+    implementation("io.opentelemetry.javaagent.instrumentation:opentelemetry-javaagent-kafka-clients-0.11:${versions.opentelemetryJavaagentAlpha}")
+
+    implementation("com.fasterxml.jackson.core:jackson-databind:${versions.jackson}")
+    implementation("com.fasterxml.jackson.core:jackson-core:${versions.jackson}")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}")
+    implementation("com.github.wnameless.json:json-flattener:${versions.jsonFlattener}")
+    implementation("com.github.wnameless.json:json-base:${versions.jsonBase}")
+
+    add("codegen", "io.opentelemetry.javaagent:opentelemetry-javaagent-tooling:${versions.opentelemetryJavaagentAlpha}")
+
+    //test dependencies
+    testInstrumentation "io.opentelemetry.javaagent.instrumentation:opentelemetry-javaagent-kafka-clients-0.11:${versions.opentelemetryJavaagentAlpha}"
+
+    testImplementation("org.testcontainers:kafka:${versions.testContainersKafka}")
+    testImplementation("org.apache.kafka:kafka-clients:${versions.kafka}")
+    testImplementation("org.awaitility:awaitility:${versions.awaitility}")
+}
+
+test {
+    jvmArgs("-Dotel.instrumentation.kafka.experimental-span-attributes=true")
+    jvmArgs("-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true")
+}
+
+def muzzleVersions = ext.versions
+
+muzzle {
+    pass {
+        group.set("org.apache.kafka")
+        module.set("kafka-clients")
+        versions.set("[2.6.0,)")
+        assertInverse.set(true)
+        extraDependency("com.fasterxml.jackson.core:jackson-databind:${muzzleVersions["jackson"]}")
+        extraDependency("com.fasterxml.jackson.core:jackson-core:${muzzleVersions["jackson"]}")
+        extraDependency("com.fasterxml.jackson.core:jackson-annotations:${muzzleVersions["jackson"]}")
+        extraDependency("com.github.wnameless.json:json-flattener:${muzzleVersions["jsonFlattener"]}")
+        extraDependency("com.github.wnameless.json:json-base:${muzzleVersions["jsonBase"]}")
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'io.confluent.csid.data.governance.lineage.opentel.extension'
+            artifactId = 'kafka-clients-instrumentation-extension'
+            from components.java
+        }
+    }
+}
