@@ -1,4 +1,5 @@
-rootProject.name = 'opentelemetry-kafka-instrumentation-extensions'
+rootProject.name = 'lineage-instrumentation-extensions'
+
 include "agent"
 include "instrumentation"
 include "instrumentation:kafka-common"

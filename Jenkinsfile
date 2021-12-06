@@ -5,6 +5,12 @@ def config = jobConfig {
     slackChannel = 'csid-build'
 }
 
+def publishStep(String vaultSecret) {
+    withVaultFile([["gradle/${vaultSecret}", "settings_file", "${env.WORKSPACE}/init.gradle", "GRADLE_NEXUS_SETTINGS"]]) {
+        sh "./gradlew --init-script ${GRADLE_NEXUS_SETTINGS} --no-daemon publish"
+    }
+}
+
 def job = {
 	withDockerServer([uri: dockerHost()]) {
 	    stage('Build') {
@@ -16,6 +22,14 @@ def job = {
 			}
 		}
     }
+
+    if (config.publish) {
+		stage("Publish to artifactory") {
+			if (config.isDevJob) {
+				publishStep('artifactory_snapshots_settings')
+			}
+		}
+	}
 }
 
 runJob config, job

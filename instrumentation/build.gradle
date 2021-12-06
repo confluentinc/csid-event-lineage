@@ -31,13 +31,22 @@ shadowJar {
     relocatePackages(it)
 }
 
-
 publishing {
+    repositories {
+        maven {
+            url = mavenUrl
+            credentials {
+                username = mavenUsername
+                password = mavenPassword
+            }
+        }
+    }
     publications {
         maven(MavenPublication) {
-            groupId = 'io.confluent.csid.data.governance.lineage.opentel.extension'
-            artifactId = 'instrumentation-extensions'
             from components.java
+            afterEvaluate {
+                artifactId = archivesBaseName
+            }
         }
     }
 }
