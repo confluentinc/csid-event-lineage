@@ -3,6 +3,7 @@ plugins {
     id "io.opentelemetry.instrumentation.muzzle-check"
     id "maven-publish"
 }
+
 apply from: "$rootDir/gradle/instrumentation.gradle"
 
 dependencies {
@@ -47,15 +48,5 @@ muzzle {
         extraDependency("com.fasterxml.jackson.core:jackson-annotations:${muzzleVersions["jackson"]}")
         extraDependency("com.github.wnameless.json:json-flattener:${muzzleVersions["jsonFlattener"]}")
         extraDependency("com.github.wnameless.json:json-base:${muzzleVersions["jsonBase"]}")
-    }
-}
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            groupId = 'io.confluent.csid.data.governance.lineage.opentel.extension'
-            artifactId = 'kafka-clients-instrumentation-extension'
-            from components.java
-        }
     }
 }
