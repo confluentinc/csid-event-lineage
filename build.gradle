@@ -16,10 +16,39 @@ plugins {
 }
 
 ext {
-    // To test locally, invoke gradlew with `-PmavenUrl=file:///some/local/path`
-    mavenUrl = project.hasProperty('mavenUrl') ? project.mavenUrl : ''
-    mavenUsername = project.hasProperty('mavenUsername') ? project.mavenUsername : ''
-    mavenPassword = project.hasProperty('mavenPassword') ? project.mavenPassword : ''
+    /*
+      First preference to project properties - -P command line override, local gradle.properties
+      file, global gradle.properties file.
+      Second preference - system properties 'org.gradle.project.maven...' - as those are set by init
+      script in CI builds.
+      Gradle docs specify that system properties with keys like 'org.gradle.project.foo' should automatically
+      resolve and set corresponding project.foo property - but that doesn't seem to be true / working
+      therefore reading system properties explicitly below.
+    */
+
+    //Maven publish repo URL
+    //check project prop and use if set
+    mavenUrl = project.hasProperty('mavenUrl') ?  project.mavenUrl
+            //check system prop and use if set
+            : (System.properties.containsKey('org.gradle.project.mavenUrl') ? System.getProperty("org.gradle.project.mavenUrl")
+            //initialize to empty string if neither of the above properties are populated
+            : '')
+
+    //Maven publish repo Username
+    //check project prop and use if set
+    mavenUsername = project.hasProperty('mavenUsername') ? project.mavenUsername
+            //check system prop and use if set
+            : (System.properties.containsKey('org.gradle.project.mavenUsername') ? System.getProperty('org.gradle.project.mavenUsername')
+            //initialize to empty string if neither of the above properties are populated
+            : '')
+
+    //Maven publish repo Password
+    //check project prop and use if set
+    mavenPassword = project.hasProperty('mavenPassword') ? project.mavenPassword
+            //check system prop and use if set
+            : (System.properties.containsKey('org.gradle.project.mavenPassword') ? System.getProperty('org.gradle.project.mavenPassword')
+            //initialize to empty string if neither of the above properties are populated
+            : '')
 }
 
 subprojects {
@@ -93,12 +122,12 @@ subprojects {
 project("instrumentation") {
     archivesBaseName = "lineage-opentel-extensions"
 }
-project("instrumentation:kafka-common"){
+project("instrumentation:kafka-common") {
     archivesBaseName = "kafka-common-lineage-extension"
 }
-project("instrumentation:kafka-clients"){
+project("instrumentation:kafka-clients") {
     archivesBaseName = "kafka-clients-lineage-extension"
 }
-project("instrumentation:kafka-streams"){
+project("instrumentation:kafka-streams") {
     archivesBaseName = "kafka-streams-lineage-extension"
 }
