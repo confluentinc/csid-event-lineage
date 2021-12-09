@@ -25,7 +25,7 @@ import org.testcontainers.utility.DockerImageName;
 
 public class CommonTestUtils {
 
-  private String kafkaBootsrapServers = "dummy";
+  private String kafkaBootstrapServers = "dummy";
   private KafkaContainer kafkaContainer;
 
   public void startKafkaContainer() {
@@ -37,7 +37,7 @@ public class CommonTestUtils {
           .withEnv("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "500").withReuse(true);
     }
     kafkaContainer.start();
-    kafkaBootsrapServers = kafkaContainer.getBootstrapServers();
+    kafkaBootstrapServers = kafkaContainer.getBootstrapServers();
   }
 
   public void stopKafkaContainer() {
@@ -51,7 +51,7 @@ public class CommonTestUtils {
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     props.put(ProducerConfig.CLIENT_ID_CONFIG, "test-producer-" + UUID.randomUUID());
-    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootsrapServers);
+    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers);
 
     props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
@@ -64,7 +64,7 @@ public class CommonTestUtils {
 
   public Properties getPropertiesForStreams() {
     Properties props = new Properties();
-    props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootsrapServers);
+    props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers);
     props.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, RandomStringUtils.randomAlphabetic(10));
     props.setProperty(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
         Serdes.String().getClass().getName());
@@ -86,8 +86,9 @@ public class CommonTestUtils {
     kafkaProducer.close();
   }
 
-  public void consumeEvent(final Class<?> keyDeserializerClass,
-      final Class<?> valueDeserializerClass, String topic) {
+  public void consumeAtLeastXEvents(final Class<?> keyDeserializerClass,
+      final Class<?> valueDeserializerClass, String topic, int minimumNumberOfEventsToConsume) {
+    int[] consumed = new int[1];
     Properties overrides = new Properties();
     overrides.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializerClass);
     overrides.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializerClass);
@@ -96,8 +97,18 @@ public class CommonTestUtils {
     await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofSeconds(1)).until(() -> {
       ConsumerRecords records = consumer.poll(Duration.ofMillis(900));
       records.forEach(
-          record -> {/*Noop - need to iterate through received records to kick off Process span */});
-      return !records.isEmpty();
+          record -> {
+            int i = 0;
+            i++;
+            /*Noop - need to iterate through received records to kick off Process span */
+          });
+      consumed[0] += records.count();
+      return consumed[0] >= minimumNumberOfEventsToConsume;
     });
+  }
+
+  public void consumeEvent(final Class<?> keyDeserializerClass,
+      final Class<?> valueDeserializerClass, String topic) {
+    consumeAtLeastXEvents(keyDeserializerClass, valueDeserializerClass, topic, 1);
   }
 }

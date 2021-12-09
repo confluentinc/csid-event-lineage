@@ -121,8 +121,7 @@ public class KafkaStreamsInstrumentationTest {
     Serde serde = Serdes.String();
 
     TopologyTestDriver topologyTestDriver = prepareKStreamTopology(serde, serde);
-    TestInputTopic testInputTopic = createTestInputTopic(topologyTestDriver, key, value, serde,
-        serde);
+    TestInputTopic testInputTopic = createTestInputTopic(topologyTestDriver, serde, serde);
     TestOutputTopic testOutputTopic = createTestOutputTopic(topologyTestDriver, serde, serde);
     testInputTopic.pipeInput(key, value);
 
@@ -161,15 +160,15 @@ public class KafkaStreamsInstrumentationTest {
     TestValuePojo valuePojo = new TestValuePojo("value1", "value2");
 
     ObjectMapper objectMapper = new ObjectMapper();
-    String expectedKey = ObjectMapperUtil.mapObjectToJSon(keyPojo, objectMapper);
-    String expectedValue = ObjectMapperUtil.mapObjectToJSon(valuePojo, objectMapper);
+    ObjectMapperUtil objectMapperUtil = new ObjectMapperUtil(objectMapper);
+    String expectedKey = objectMapperUtil.mapObjectToJSon(keyPojo);
+    String expectedValue = objectMapperUtil.mapObjectToJSon(valuePojo);
 
     Serde keySerde = new JsonTestKeyPojoSerde();
     Serde valueSerde = new JsonTestValuePojoSerde();
 
     TopologyTestDriver topologyTestDriver = prepareKStreamTopology(keySerde, valueSerde);
-    TestInputTopic testInputTopic = createTestInputTopic(topologyTestDriver, keyPojo, valuePojo,
-        keySerde, valueSerde);
+    TestInputTopic testInputTopic = createTestInputTopic(topologyTestDriver, keySerde, valueSerde);
     TestOutputTopic testOutputTopic = createTestOutputTopic(topologyTestDriver, keySerde,
         valueSerde);
     testInputTopic.pipeInput(keyPojo, valuePojo);
@@ -223,8 +222,7 @@ public class KafkaStreamsInstrumentationTest {
       String expectedKey, String expectedValue) {
 
     TopologyTestDriver topologyTestDriver = prepareKStreamTopology(keySerde, valueSerde);
-    TestInputTopic testInputTopic = createTestInputTopic(topologyTestDriver, key, value, keySerde,
-        valueSerde);
+    TestInputTopic testInputTopic = createTestInputTopic(topologyTestDriver, keySerde, valueSerde);
     TestOutputTopic testOutputTopic = createTestOutputTopic(topologyTestDriver, keySerde,
         valueSerde);
     testInputTopic.pipeInput(key, value);
@@ -260,8 +258,8 @@ public class KafkaStreamsInstrumentationTest {
         commonTestUtils.getPropertiesForStreams());
   }
 
-  private TestInputTopic createTestInputTopic(TopologyTestDriver topologyTestDriver, Object key,
-      Object value, Serde keySerde, Serde valueSerde) {
+  private TestInputTopic createTestInputTopic(TopologyTestDriver topologyTestDriver, Serde keySerde,
+      Serde valueSerde) {
     return topologyTestDriver.createInputTopic(inputTopic, keySerde.serializer(),
         valueSerde.serializer());
   }

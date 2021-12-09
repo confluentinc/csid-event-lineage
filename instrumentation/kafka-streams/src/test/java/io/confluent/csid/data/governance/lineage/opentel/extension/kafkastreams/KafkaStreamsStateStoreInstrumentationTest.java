@@ -42,6 +42,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+/**
+ * Tests for tracing propagation during Stream to KTable join operations that utilize StateStore
+ * put/get.
+ */
 public class KafkaStreamsStateStoreInstrumentationTest {
 
   @RegisterExtension
@@ -129,7 +133,6 @@ public class KafkaStreamsStateStoreInstrumentationTest {
     createTopologyAndInjectMessagesToGenerateTrace(serde, serde, key, value);
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(2);
-
     Consumer<Attributes> attributeAssertions =
         attributes -> {
           assertThat(attributes.get(AttributeKey.stringKey("payload.raw.key")))
@@ -155,8 +158,9 @@ public class KafkaStreamsStateStoreInstrumentationTest {
     TestValuePojo valuePojo = new TestValuePojo("value1", "value2");
 
     ObjectMapper objectMapper = new ObjectMapper();
-    String expectedKey = ObjectMapperUtil.mapObjectToJSon(keyPojo, objectMapper);
-    String expectedValue = ObjectMapperUtil.mapObjectToJSon(valuePojo, objectMapper);
+    ObjectMapperUtil objectMapperUtil = new ObjectMapperUtil(objectMapper);
+    String expectedKey = objectMapperUtil.mapObjectToJSon(keyPojo);
+    String expectedValue = objectMapperUtil.mapObjectToJSon(valuePojo);
 
     Serde keySerde = new JsonTestKeyPojoSerde();
     Serde valueSerde = new JsonTestValuePojoSerde();
@@ -240,20 +244,24 @@ public class KafkaStreamsStateStoreInstrumentationTest {
     TracesAssert.assertThat(traces).hasSize(2)
         .hasTracesSatisfyingExactly(
             trace -> trace
-                .hasSize(3)
+                .hasSize(4)
                 .hasSpansSatisfyingExactly(
                     span -> span
                         .hasKind(SpanKind.PRODUCER),
                     span -> span.hasKind(SpanKind.CONSUMER),
+                    span -> span.hasKind(SpanKind.INTERNAL) // StateStore PUT
+                        .hasAttributesSatisfying(attributeAssertions),
                     span -> span
-                        .hasKind(SpanKind.PRODUCER)
+                        .hasKind(SpanKind.PRODUCER) // Change log send
                         .hasAttributesSatisfying(attributeAssertions)
                 ),
             trace -> trace
-                .hasSize(4)
+                .hasSize(5)
                 .hasSpansSatisfyingExactly(
                     span -> span.hasKind(SpanKind.PRODUCER),
                     span -> span.hasKind(SpanKind.CONSUMER),
+                    span -> span.hasKind(SpanKind.INTERNAL) // StateStore GET
+                        .hasAttributesSatisfying(attributeAssertions).hasTotalRecordedLinks(1),
                     span -> span.hasKind(SpanKind.PRODUCER),
                     span -> span.hasKind(SpanKind.CONSUMER)
                 ));
@@ -299,6 +307,4 @@ public class KafkaStreamsStateStoreInstrumentationTest {
         .to(outputTopic, Produced.with(keySerde, valueSerde));
     return new KafkaStreams(streamsBuilder.build(), commonTestUtils.getPropertiesForStreams());
   }
-
-
 }

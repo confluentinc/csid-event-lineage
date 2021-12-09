@@ -56,7 +56,10 @@ public class KafkaStreamsInstrumentationModule extends InstrumentationModule {
     return asList(
         new KafkaRecordCollectorInstrumentation(),
         new StateStoreInstrumentation(),
-        new PartitionGroupInstrumentation());
+        new PartitionGroupInstrumentation(),
+        new StateStoreTracingPropagationInstrumentation(),
+        new StateSerdesTracingPropagationInstrumentation(),
+        new KStreamKStreamJoinInstrumentation());
   }
 
   @Override
@@ -64,6 +67,6 @@ public class KafkaStreamsInstrumentationModule extends InstrumentationModule {
     return className.startsWith(
         "io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon") ||
         className.startsWith(
-            "io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.Singletons");
+            "io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers");
   }
 }

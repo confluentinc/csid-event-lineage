@@ -3,13 +3,13 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.openTelemetryWrapper;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.payloadHandler;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPackagePrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.returns;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CommonUtil;
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;
@@ -57,8 +57,8 @@ public class PartitionGroupInstrumentation implements TypeInstrumentation {
       if (record == null) {
         return;
       }
-      CommonUtil.captureKeyValuePayloadsToSpan(record.key(), record.value(),
-          Singletons.objectMapper(), Span.current());
+      payloadHandler().captureKeyValuePayloadsToSpan(record.key(), record.value(),
+          openTelemetryWrapper().currentSpan());
     }
   }
 }

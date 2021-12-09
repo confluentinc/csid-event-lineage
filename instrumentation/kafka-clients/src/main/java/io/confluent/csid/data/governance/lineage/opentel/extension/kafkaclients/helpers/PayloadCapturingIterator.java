@@ -3,8 +3,9 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CommonUtil;
-import io.opentelemetry.api.trace.Span;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.openTelemetryWrapper;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.payloadHandler;
+
 import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessTracing;
 import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessWrapper;
 import io.opentelemetry.javaagent.instrumentation.kafkaclients.TracingIterator;
@@ -59,9 +60,8 @@ public class PayloadCapturingIterator<K, V>
   @Override
   public ConsumerRecord<K, V> next() {
     ConsumerRecord<K, V> record = delegateIterator.next();
-    CommonUtil.captureKeyValuePayloadsToSpan(record.key(), record.value(),
-        Singletons.objectMapper(), Span.current());
-
+    payloadHandler().captureKeyValuePayloadsToSpan(record.key(), record.value(),
+        openTelemetryWrapper().currentSpan());
     return record;
   }
 

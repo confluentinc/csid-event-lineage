@@ -4,14 +4,13 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.PayloadHolder.PAYLOAD_HOLDER;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.Singletons.objectMapper;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.payloadHandler;
 import static net.bytebuddy.matcher.ElementMatchers.hasSuperType;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CommonUtil;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.PayloadHolder;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -67,8 +66,7 @@ public class KafkaRecordCollectorInstrumentation implements TypeInstrumentation 
         @Advice.Local("payloadRecorded") boolean payloadRecorded) {
 
       if (PAYLOAD_HOLDER.get() == null && !(value instanceof byte[])) {
-        CommonUtil.parseAndStorePayloadIntoPayloadHolder(key, value, objectMapper(),
-            PAYLOAD_HOLDER);
+        payloadHandler().parseAndStorePayloadIntoPayloadHolder(key, value, PAYLOAD_HOLDER);
         payloadRecorded = true;
       }
     }

@@ -17,6 +17,12 @@ dependencies {
     implementation("com.github.wnameless.json:json-base:${versions.jsonBase}")
 
     add("codegen", "io.opentelemetry.javaagent:opentelemetry-javaagent-tooling:${versions.opentelemetryJavaagentAlpha}")
+    add("codegen", "ch.qos.logback:logback-classic:${versions.logback}")
+    add("muzzleBootstrap", "io.opentelemetry.instrumentation:opentelemetry-instrumentation-api-annotation-support:${versions.opentelemetryJavaagentAlpha}")
+    add("muzzleBootstrap", "io.opentelemetry.javaagent:opentelemetry-javaagent-instrumentation-api:${versions.opentelemetryJavaagentAlpha}")
+    add("muzzleTooling", "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${versions.opentelemetryJavaagentAlpha}")
+    add("muzzleTooling", "io.opentelemetry.javaagent:opentelemetry-javaagent-tooling:${versions.opentelemetryJavaagentAlpha}")
+    add("muzzleTooling", "org.slf4j:slf4j-simple:${versions.slf4j}")
 
     //test dependencies
     testInstrumentation "io.opentelemetry.javaagent.instrumentation:opentelemetry-javaagent-kafka-streams-0.11:${versions.opentelemetryJavaagentAlpha}"
