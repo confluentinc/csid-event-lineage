@@ -20,5 +20,4 @@ public class PayloadHolder {
 
   String key;
   String value;
-
 }

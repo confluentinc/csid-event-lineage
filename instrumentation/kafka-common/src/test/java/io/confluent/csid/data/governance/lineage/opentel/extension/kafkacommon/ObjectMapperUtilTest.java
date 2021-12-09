@@ -19,12 +19,14 @@ import org.junit.jupiter.api.Test;
 
 class ObjectMapperUtilTest {
 
+
   ObjectMapper objectMapper = new ObjectMapper();
+  ObjectMapperUtil classUnderTest = new ObjectMapperUtil(objectMapper);
 
   @Test
   @DisplayName("Test mapObjectToJSon for Null object returns \"null\" String")
   void testMapObjectToJSonForNullObjectReturnsNullString() {
-    assertThat(ObjectMapperUtil.mapObjectToJSon(null, objectMapper))
+    assertThat(classUnderTest.mapObjectToJSon(null))
         .isEqualTo("null");
   }
 
@@ -33,7 +35,7 @@ class ObjectMapperUtilTest {
   void testMapObjectToJSonForByteArrayReturnsBase64EncodedValue() {
     byte[] byteArrayObject = new byte[]{41, 32, 12};
     String expectedResult = Base64.getEncoder().encodeToString(byteArrayObject);
-    assertThat(ObjectMapperUtil.mapObjectToJSon(byteArrayObject, objectMapper))
+    assertThat(classUnderTest.mapObjectToJSon(byteArrayObject))
         .isEqualTo(expectedResult);
   }
 
@@ -43,7 +45,7 @@ class ObjectMapperUtilTest {
     byte[] byteArrayObject = new byte[]{41, 32, 12};
     String expectedResult = Base64.getEncoder().encodeToString(byteArrayObject);
     Bytes wrappedByteArray = new Bytes(byteArrayObject);
-    assertThat(ObjectMapperUtil.mapObjectToJSon(wrappedByteArray, objectMapper))
+    assertThat(classUnderTest.mapObjectToJSon(wrappedByteArray))
         .isEqualTo(expectedResult);
   }
 
@@ -51,7 +53,7 @@ class ObjectMapperUtilTest {
   @DisplayName("Test mapObjectToJSon for String returns it unchanged")
   void testMapObjectToJSonForStringReturnsItUnchanged() {
     String inputString = "Test string with special chars \"\n\\;{}[]";
-    assertThat(ObjectMapperUtil.mapObjectToJSon(inputString, objectMapper))
+    assertThat(classUnderTest.mapObjectToJSon(inputString))
         .isEqualTo(inputString);
   }
 
@@ -59,7 +61,7 @@ class ObjectMapperUtilTest {
   @DisplayName("Test mapObjectToJSon for UUID returns it as String")
   void testMapObjectToJSonForUUIDReturnsUUIDAsString() {
     UUID input = UUID.randomUUID();
-    assertThat(ObjectMapperUtil.mapObjectToJSon(input, objectMapper))
+    assertThat(classUnderTest.mapObjectToJSon(input))
         .isEqualTo(input.toString());
   }
 
@@ -67,7 +69,7 @@ class ObjectMapperUtilTest {
   @DisplayName("Test mapObjectToJSon for Pojo returns Json String without extra quotes")
   void testMapObjectToJSonForPojoReturnsJsonStringWithoutAdditionalQuotes() {
     PojoTest input = new PojoTest("stringValue", 10, Arrays.asList("listItem1", "listItem2"));
-    assertThat(ObjectMapperUtil.mapObjectToJSon(input, objectMapper))
+    assertThat(classUnderTest.mapObjectToJSon(input))
         .isEqualTo(
             "{\"stringField\":\"stringValue\",\"intField\":10,\"stringList\":[\"listItem1\",\"listItem2\"]}");
   }
@@ -76,8 +78,8 @@ class ObjectMapperUtilTest {
   @DisplayName("Test mapObjectToJSon for Pojo returns Error Parsing Payload message on exception")
   void testMapObjectToJSonReturnsErrorParsingMessageWhenObjectCannotBeParsed() {
     Object objectWithoutMapper = new Object();
-    assertDoesNotThrow(() -> ObjectMapperUtil.mapObjectToJSon(objectWithoutMapper, objectMapper));
-    assertThat(ObjectMapperUtil.mapObjectToJSon(objectWithoutMapper, objectMapper))
+    assertDoesNotThrow(() -> classUnderTest.mapObjectToJSon(objectWithoutMapper));
+    assertThat(classUnderTest.mapObjectToJSon(objectWithoutMapper))
         .startsWith("ERROR PARSING PAYLOAD for java.lang.Object");
   }
 
@@ -85,7 +87,7 @@ class ObjectMapperUtilTest {
   @DisplayName("Test flattenPayload for Json String returns List of key/value pairs")
   void testFlattenJsonForJsonStringReturnsListOfPairs() {
     String json = "{\"stringField\":\"stringValue\",\"intField\":10,\"stringList\":[\"listItem1\",\"listItem2\"]}";
-    assertThat(ObjectMapperUtil.flattenPayload(json, "test.")).containsExactly(
+    assertThat(classUnderTest.flattenPayload(json, "test.")).containsExactly(
         new SimpleEntry<>("test.stringField", "stringValue"),
         new SimpleEntry<>("test.intField", "10"),
         new SimpleEntry<>("test.stringList[0]", "listItem1"),
@@ -97,7 +99,7 @@ class ObjectMapperUtilTest {
   @DisplayName("Test flattenPayload for non-Json String strips leading dot from attribute prefix")
   void testFlattenJsonForNonJsonStringStripsLeadingDotFromAttributePrefix() {
     String json = "testValue";
-    assertThat(ObjectMapperUtil.flattenPayload(json, "test.")).containsExactly(
+    assertThat(classUnderTest.flattenPayload(json, "test.")).containsExactly(
         new SimpleEntry<>("test", "testValue")
     );
   }
@@ -106,7 +108,7 @@ class ObjectMapperUtilTest {
   @DisplayName("Test flattenPayload for non-Json String uses prefix as-is if not ending with dot")
   void testFlattenJsonForNonJsonStringUsesPrefixAsIsIfItsNotEndingWithDot() {
     String json = "testValue";
-    assertThat(ObjectMapperUtil.flattenPayload(json, "test-key")).containsExactly(
+    assertThat(classUnderTest.flattenPayload(json, "test-key")).containsExactly(
         new SimpleEntry<>("test-key", "testValue")
     );
   }
@@ -115,7 +117,7 @@ class ObjectMapperUtilTest {
   @DisplayName("Test flattenPayload for non-Json String starting with '{' strips leading dot from attribute prefix")
   void testFlattenJsonForNonJsonStringStartingWithOpenBracketStripsLeadingDotFromAttributePrefix() {
     String json = "{testValue}";
-    assertThat(ObjectMapperUtil.flattenPayload(json, "test.")).containsExactly(
+    assertThat(classUnderTest.flattenPayload(json, "test.")).containsExactly(
         new SimpleEntry<>("test", "{testValue}")
     );
   }
@@ -124,7 +126,7 @@ class ObjectMapperUtilTest {
   @DisplayName("Test flattenPayload for Null input returns attribute with \"null\" String value")
   void testFlattenJsonForNullValueReturnsAttributeWithNullStringValue() {
     String json = null;
-    assertThat(ObjectMapperUtil.flattenPayload(json, "test.")).containsExactly(
+    assertThat(classUnderTest.flattenPayload(json, "test.")).containsExactly(
         new SimpleEntry<>("test", "null")
     );
   }

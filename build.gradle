@@ -28,7 +28,7 @@ ext {
 
     //Maven publish repo URL
     //check project prop and use if set
-    mavenUrl = project.hasProperty('mavenUrl') ?  project.mavenUrl
+    mavenUrl = project.hasProperty('mavenUrl') ? project.mavenUrl
             //check system prop and use if set
             : (System.properties.containsKey('org.gradle.project.mavenUrl') ? System.getProperty("org.gradle.project.mavenUrl")
             //initialize to empty string if neither of the above properties are populated
@@ -71,7 +71,9 @@ subprojects {
                 testContainersKafka        : "1.16.2",
                 assertj                    : "3.19.0",
                 awaitility                 : "4.1.1",
-                lombok                     : "1.18.22"
+                lombok                     : "1.18.22",
+                logback                    : "1.2.3",
+                slf4j                      : "1.7.30"
         ]
 
         deps = [

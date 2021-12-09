@@ -3,17 +3,16 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.openTelemetryWrapper;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.payloadHandler;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.PayloadHolder.PAYLOAD_HOLDER;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CommonUtil;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.PayloadHolder;
 import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;
@@ -79,14 +78,15 @@ public class ExtendedKafkaProducerInstrumentation implements TypeInstrumentation
         value = producerRecord.value();
       }
 
-      CommonUtil.captureKeyValuePayloadsToSpan(key, value, Singletons.objectMapper(),
-          Span.current());
+      payloadHandler().captureKeyValuePayloadsToSpan(key, value,
+          openTelemetryWrapper().currentSpan());
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
     public static void checkForError(@Advice.Thrown Throwable throwable) {
       if (throwable != null) {
-        Span.current().setAttribute(AttributeKey.stringKey("exception"), throwable.toString());
+        openTelemetryWrapper().currentSpan()
+            .setAttribute(AttributeKey.stringKey("exception"), throwable.toString());
       }
     }
   }

@@ -12,14 +12,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.experimental.UtilityClass;
 import org.apache.kafka.common.utils.Bytes;
 
 /**
  * Payload mapping to JSON utility methods
  */
-@UtilityClass
 public class ObjectMapperUtil {
+
+  private final ObjectMapper objectMapper;
+
+  public ObjectMapperUtil(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
 
   /**
    * Maps given object to Json - using supplied {@link ObjectMapper} with any additional registered
@@ -35,10 +39,9 @@ public class ObjectMapperUtil {
    * mapped object.
    *
    * @param object       - object to map to Json
-   * @param objectMapper - {@link ObjectMapper} to use for mapping
    * @return Json representation of object as String
    */
-  public static String mapObjectToJSon(Object object, ObjectMapper objectMapper) {
+  public String mapObjectToJSon(Object object) {
     try {
       if (object instanceof String) {
         return (String) object;
@@ -71,7 +74,7 @@ public class ObjectMapperUtil {
    * @param stringToCheck String to check
    * @return boolean indicating if String starts and ends with double quotes
    */
-  private static boolean startsAndEndsWithDoubleQuotes(String stringToCheck) {
+  private boolean startsAndEndsWithDoubleQuotes(String stringToCheck) {
     return stringToCheck.startsWith("\"") && stringToCheck.endsWith("\"");
   }
 
@@ -99,7 +102,7 @@ public class ObjectMapperUtil {
    * @param attributePrefix prefix for resulting keys
    * @return list of key / value pairs
    */
-  static List<SimpleEntry<String, String>> flattenPayload(String json,
+   List<SimpleEntry<String, String>> flattenPayload(String json,
       String attributePrefix) {
     if (null == json) {
       return Collections.singletonList(
@@ -134,7 +137,7 @@ public class ObjectMapperUtil {
    * @param attributePrefix
    * @return attributePrefix with trailing dot stripped
    */
-  private static String getSingleValuePrefix(String attributePrefix) {
+  private String getSingleValuePrefix(String attributePrefix) {
     if (attributePrefix.endsWith(".")) {
       return attributePrefix.substring(0, attributePrefix.length() - 1);
     } else {
