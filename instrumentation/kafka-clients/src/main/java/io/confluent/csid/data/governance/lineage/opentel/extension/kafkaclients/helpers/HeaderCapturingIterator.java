@@ -3,9 +3,9 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.openTelemetryWrapper;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.payloadHandler;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.headersHandler;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHolder;
 import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessTracing;
 import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessWrapper;
 import io.opentelemetry.javaagent.instrumentation.kafkaclients.TracingIterator;
@@ -15,33 +15,33 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 /**
  * Based on OpenTelemetry kafka-clients {@link TracingIterator}.
  * <p>
- * Wraps ConsumerRecord iterator and executes payload capture logic on "next()" call.
+ * Wraps ConsumerRecord iterator and executes header capture logic on "next()" call.
  */
-public class PayloadCapturingIterator<K, V>
+public class HeaderCapturingIterator<K, V>
     implements Iterator<ConsumerRecord<K, V>>,
     KafkaClientsConsumerProcessWrapper<Iterator<ConsumerRecord<K, V>>> {
 
   private final Iterator<ConsumerRecord<K, V>> delegateIterator;
 
-  private PayloadCapturingIterator(
+  private HeaderCapturingIterator(
       Iterator<ConsumerRecord<K, V>> delegateIterator) {
     this.delegateIterator = delegateIterator;
 
   }
 
   /**
-   * Wraps iterator with PayloadCapturingIterator if {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()}
+   * Wraps iterator with {@link HeaderCapturingIterator} if {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()}
    * is true.
    *
    * @param delegate generic ConsumerRecord iterator to wrap
    * @param <K>      ConsumerRecord Key type
    * @param <V>      ConsumerRecord Value type
-   * @return PayloadCapturingIterator
+   * @return {@link HeaderCapturingIterator}
    */
   public static <K, V> Iterator<ConsumerRecord<K, V>> wrap(
       Iterator<ConsumerRecord<K, V>> delegate) {
     if (KafkaClientsConsumerProcessTracing.wrappingEnabled()) {
-      return new PayloadCapturingIterator<>(delegate);
+      return new HeaderCapturingIterator<>(delegate);
     }
     return delegate;
   }
@@ -52,16 +52,25 @@ public class PayloadCapturingIterator<K, V>
   }
 
   /**
-   * in addition to returning next ConsumerRecord (if present) captures ConsumerRecord key and value
-   * as Json and adds those to current Span attributes.
+   * In addition to returning next ConsumerRecord (if present) - store configured headers in {@link
+   * HeadersHolder} for automatic propagation on produce.
+   * <p>
+   * Capture header key/values as Span attributes according to configured whitelist. Headers are
+   * captured according to configuration as is (as byte[] values) and recorded to the consume span
+   * assuming string values.
    *
    * @return next ConsumerRecord
    */
   @Override
   public ConsumerRecord<K, V> next() {
     ConsumerRecord<K, V> record = delegateIterator.next();
-    payloadHandler().captureKeyValuePayloadsToSpan(record.key(), record.value(),
-        openTelemetryWrapper().currentSpan());
+    if (record != null) {
+      headersHandler().storeHeadersForPropagation(record.headers().toArray());
+      headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
+          record.headers().toArray());
+    } else {
+      HeadersHolder.clear();
+    }
     return record;
   }
 

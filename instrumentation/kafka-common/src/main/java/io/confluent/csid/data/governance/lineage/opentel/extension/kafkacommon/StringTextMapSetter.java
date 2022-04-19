@@ -3,7 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers.TRACING_HEADER;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.TRACING_HEADER;
 
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;

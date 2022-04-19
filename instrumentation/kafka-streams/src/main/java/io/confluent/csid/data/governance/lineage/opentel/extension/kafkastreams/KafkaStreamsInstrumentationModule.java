@@ -13,7 +13,7 @@ import java.util.List;
 import net.bytebuddy.matcher.ElementMatcher;
 
 /**
- * KafkaStreams instrumentation registration module Specifies instrumentation and helper classes and
+ * KafkaStreams instrumentation registration module specifies instrumentation, helper classes and
  * instrumentation application order
  */
 @AutoService(InstrumentationModule.class)
@@ -54,12 +54,13 @@ public class KafkaStreamsInstrumentationModule extends InstrumentationModule {
   @Override
   public List<TypeInstrumentation> typeInstrumentations() {
     return asList(
-        new KafkaRecordCollectorInstrumentation(),
-        new StateStoreInstrumentation(),
         new PartitionGroupInstrumentation(),
-        new StateStoreTracingPropagationInstrumentation(),
-        new StateSerdesTracingPropagationInstrumentation(),
-        new KStreamKStreamJoinInstrumentation());
+        new KeyValueStoreBuilderInstrumentation(),
+        new WindowStoreBuilderInstrumentation(),
+        new TimestampedBytesStoreInstrumentation(),
+        new SessionStoreBuilderInstrumentation(),
+        new ValueAndTimestampDeserializerInstrumentation(),
+        new RecordConvertersInstrumentation());
   }
 
   @Override
