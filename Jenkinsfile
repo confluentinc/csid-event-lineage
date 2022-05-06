@@ -1,8 +1,9 @@
 #!/usr/bin/env groovy
 
 def config = jobConfig {
-	nodeLabel = 'docker-debian-jdk11'
-    slackChannel = 'csid-build'
+  nodeLabel = 'docker-debian-jdk11'
+  slackChannel = 'csid-build'
+  skipGitHashCheck = true
 }
 
 def publishStep(String vaultSecret) {

@@ -9,10 +9,10 @@ plugins {
     into a single jar.
     See https://imperceptiblethoughts.com/shadow/ for more details about Shadow plugin.
      */
-    id "com.github.johnrengelman.shadow" version "7.1.0"
+    id "com.github.johnrengelman.shadow" version "7.1.2"
 
-    id "io.opentelemetry.instrumentation.muzzle-generation" version "0.8.0"
-    id "io.opentelemetry.instrumentation.muzzle-check" version "0.8.0"
+    id "io.opentelemetry.instrumentation.muzzle-generation" version "1.13.0-alpha"
+    id "io.opentelemetry.instrumentation.muzzle-check" version "1.13.0-alpha"
 }
 
 ext {
@@ -58,11 +58,11 @@ subprojects {
 
     ext {
         versions = [
-                opentelemetry              : "1.7.1",
-                opentelemetryAlpha         : "1.7.2-alpha",
-                opentelemetryJavaagent     : "1.7.2",
-                opentelemetryJavaagentAlpha: "1.7.2-alpha",
-                bytebuddy                  : "1.10.18",
+                opentelemetry              : "1.13.0",
+                opentelemetryAlpha         : "1.13.0-alpha",
+                opentelemetryJavaagent     : "1.13.0",
+                opentelemetryJavaagentAlpha: "1.13.0-alpha",
+                bytebuddy                  : "1.10.19",
                 guava                      : "30.1-jre",
                 jackson                    : "2.12.3",
                 jsonFlattener              : "0.12.0",
@@ -78,7 +78,7 @@ subprojects {
 
         deps = [
                 bytebuddy           : [
-                        "net.bytebuddy:byte-buddy:${versions.bytebuddy}",
+                        "net.bytebuddy:byte-buddy-dep:${versions.bytebuddy}",
 
                 ],
                 autoservice         : [
