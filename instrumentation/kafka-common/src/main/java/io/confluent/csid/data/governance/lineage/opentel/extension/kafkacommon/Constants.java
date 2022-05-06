@@ -9,10 +9,48 @@ import lombok.experimental.UtilityClass;
 public class Constants {
 
   public static final String INSTRUMENTATION_NAME = "io.opentelemetry.kafka-streams-2.6";
+  public static final String HEADER_ATTRIBUTE_PREFIX = "headers.";
+  /**
+   * Opentelemetry trace header name
+   */
+  public static final String TRACING_HEADER = "traceparent";
+  /**
+   * Magic byte used to store/get trace id to/from byte[] serialized value
+   */
+  public static final byte[] TRACING_MAGIC_BYTES = new byte[]{'T', 'R', 'A', 'C', 'E'};
+  /**
+   * Size of int value in bytes
+   */
+  public static final int INT_SIZE_BYTES = Integer.BYTES;
 
-  public class SpanNames{
+  /**
+   * Timestamp (long) value length in bytes
+   */
+  public static final int TIMESTAMP_LENGTH = Long.BYTES;
+
+  /**
+   * Constants for building span names
+   */
+  public class SpanNames {
+
+    /**
+     * Span name format - "operation state-store-name" - i.e. "state-store-get
+     * value-aggregate-store"
+     */
+    public static final String STATE_STORE_SPAN_NAME_FORMAT = "%s %s";
+    /**
+     * State store Get operation name - used by all retrieval operations - get, fetch, fetchAll,
+     * fetchRange
+     */
     public static final String STATE_STORE_GET = "state-store-get";
+    /**
+     * State store Put operation name - used by all put operations - put, putIfAbsent, putAll
+     */
     public static final String STATE_STORE_PUT = "state-store-put";
-
+    /**
+     * State store delete operation name - used by delete / remove operations - delete,
+     * removeSession
+     */
+    public static final String STATE_STORE_DELETE = "state-store-delete";
   }
 }

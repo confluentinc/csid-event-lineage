@@ -3,10 +3,9 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ObjectMapperUtil;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeaderCaptureConfiguration;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHandler;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.PayloadHandler;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -15,31 +14,23 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class Singletons {
 
-  /**
-   * ObjectMapper singleton for use in payload capture / Json mapping.
-   */
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static OpenTelemetryWrapper OPEN_TELEMETRY_WRAPPER = new OpenTelemetryWrapper();
 
-  private static final ObjectMapperUtil OBJECT_MAPPER_UTIL = new ObjectMapperUtil(objectMapper());
+  private static HeaderCaptureConfiguration HEADER_CAPTURE_CONFIGURATION = new HeaderCaptureConfiguration();
 
-  private static final PayloadHandler PAYLOAD_HANDLER = new PayloadHandler(objectMapperUtil());
-
-  private static final OpenTelemetryWrapper OPEN_TELEMETRY_WRAPPER = new OpenTelemetryWrapper();
-
-  public static ObjectMapper objectMapper() {
-    return OBJECT_MAPPER;
-  }
-
-  public static ObjectMapperUtil objectMapperUtil() {
-    return OBJECT_MAPPER_UTIL;
-  }
-
-  public static PayloadHandler payloadHandler() {
-    return PAYLOAD_HANDLER;
-  }
+  private static HeadersHandler HEADERS_HANDLER = new HeadersHandler(openTelemetryWrapper(),
+      headerCaptureConfiguration());
 
   public static OpenTelemetryWrapper openTelemetryWrapper() {
     return OPEN_TELEMETRY_WRAPPER;
+  }
+
+  public static HeadersHandler headersHandler() {
+    return HEADERS_HANDLER;
+  }
+
+  public static HeaderCaptureConfiguration headerCaptureConfiguration() {
+    return HEADER_CAPTURE_CONFIGURATION;
   }
 
   /**
@@ -54,5 +45,4 @@ public class Singletons {
         || className.startsWith(
         "io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.");
   }
-
 }

@@ -10,9 +10,9 @@ import static net.bytebuddy.matcher.ElementMatchers.returns;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.PayloadCapturingIterable;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.PayloadCapturingIterator;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.PayloadCapturingList;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.HeaderCapturingIterable;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.HeaderCapturingIterator;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.HeaderCapturingList;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import io.opentelemetry.javaagent.instrumentation.kafkaclients.ConsumerRecordsInstrumentation;
@@ -28,8 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
  * Based on OpenTelemetry kafka-clients {@link ConsumerRecordsInstrumentation}.
  * <p>
  * Applies Advice to {@link ConsumerRecords} class - wrapping returned Iterable, Iterator and List
- * to allow capturing of individual {@link ConsumerRecord} key/value payloads as they are
- * traversed.
+ * to allow capturing of individual {@link ConsumerRecord} headers as they are traversed.
  */
 public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeInstrumentation {
 
@@ -75,7 +74,7 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
     public static <K, V> void wrap(
         @Advice.Return(readOnly = false) Iterable<ConsumerRecord<K, V>> iterable) {
       if (iterable != null) {
-        iterable = PayloadCapturingIterable.wrap(iterable);
+        iterable = HeaderCapturingIterable.wrap(iterable);
       }
     }
   }
@@ -87,7 +86,7 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
     public static void wrap(
         @Advice.Return(readOnly = false) List<ConsumerRecord<?, ?>> list) {
       if (list != null) {
-        list = new PayloadCapturingList(list);
+        list = new HeaderCapturingList(list);
       }
     }
   }
@@ -100,7 +99,7 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
         @Advice.Return(readOnly = false) Iterator<ConsumerRecord<K, V>> iterator) {
 
       if (iterator != null) {
-        iterator = PayloadCapturingIterator.wrap(iterator);
+        iterator = HeaderCapturingIterator.wrap(iterator);
       }
     }
   }

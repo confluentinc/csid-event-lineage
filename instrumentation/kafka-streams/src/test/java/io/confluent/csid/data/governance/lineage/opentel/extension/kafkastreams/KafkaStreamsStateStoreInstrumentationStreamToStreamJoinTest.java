@@ -3,14 +3,22 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.CommonTestUtils.assertTracesCaptured;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER_2;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.HeaderPropagationTestUtils.CHARSET_UTF_8;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.HeaderPropagationTestUtils.NOT_WHITELISTED_HEADERS;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.HeaderPropagationTestUtils.cleanupHeaderConfiguration;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.HeaderPropagationTestUtils.setupHeaderConfiguration;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.consume;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.produce;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.produceChangelog;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStoreGet;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStorePut;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.TraceAssertData.trace;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
-import io.opentelemetry.sdk.testing.assertj.TraceAssert;
-import io.opentelemetry.sdk.testing.assertj.TracesAssert;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Duration;
 import java.util.Arrays;
@@ -18,11 +26,13 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Consumer;
-import org.apache.commons.lang3.tuple.Pair;
+import java.util.stream.IntStream;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -32,7 +42,9 @@ import org.apache.kafka.streams.kstream.JoinWindows;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.ValueJoiner;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,6 +69,16 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
 
   private CommonTestUtils commonTestUtils;
 
+  @BeforeAll
+  static void setupAll() {
+    setupHeaderConfiguration();
+  }
+
+  @AfterAll
+  static void cleanupAll() {
+    cleanupHeaderConfiguration();
+  }
+
   @BeforeEach
   void setup() {
     commonTestUtils = new CommonTestUtils();
@@ -74,224 +96,144 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
   }
 
   @Test
-  @DisplayName("Test KStream with KStream Join for Integer key / value types")
-  void testKStreamWithJoinedKStreamSpanCapturesPayloadForIntegerKeyValues() {
+  @DisplayName("Test KStream with KStream Join with header propagation and capture")
+  void testKStreamWithJoinedKStreamHeaderPropagationAndCapture() {
+    Header msg1ExpectedHeader = CAPTURED_PROPAGATED_HEADER;
+    Header msg2ExpectedHeader = CAPTURED_PROPAGATED_HEADER_2;
+    Header msg1UnexpectedHeader = NOT_WHITELISTED_HEADERS[0];
+    Header msg2UnexpectedHeader = NOT_WHITELISTED_HEADERS[1];
 
-    Pair<Integer, Integer>[] topic1Messages = new Pair[]{
-        Pair.of(1, 1),
-        Pair.of(1, 2),
-        Pair.of(2, 3)};
-    Pair<Integer, Integer>[] topic2Messages = new Pair[]{
-        Pair.of(1, 10),
-        Pair.of(1, 20),
-        Pair.of(2, 30)};
-    Pair<Integer, Integer>[] outputMessages = new Pair[]{
-        Pair.of(1, 11), //Topic 2 Message 1 + Topic 1 Message 1
-        Pair.of(1, 12), //Topic 1 Message 2 + Topic 1 Message 1
-        Pair.of(1, 21), //Topic 2 Message 1 + Topic 1 Message 1
-        Pair.of(1, 22), //Topic 2 Message 2 + Topic 1 Message 2
-        Pair.of(2, 33)}; //Topic 2 Message 3 + Topic 1 Message 3
+    Triple<Integer, Integer, Header[]>[] topic1Messages = new Triple[]{
+        Triple.of(1, 1,
+            headers(
+                msg1ExpectedHeader,
+                msg1UnexpectedHeader)
+        ),
+        Triple.of(1, 2, new Header[0]),
+        Triple.of(2, 3, new Header[0])};
+
+    Triple<Integer, Integer, Header[]>[] topic2Messages = new Triple[]{
+        Triple.of(1, 10,
+            headers(
+                msg2ExpectedHeader,
+                msg2UnexpectedHeader)
+        ),
+        Triple.of(1, 20, new Header[0]),
+        Triple.of(2, 30, new Header[0])};
+
+    Triple<Integer, Integer, Header[]>[] expectedOutputMessages = new Triple[]{
+        //Topic 1 Message 1 + Topic 2 Message 1
+        Triple.of(1, 11,
+            headers(
+                msg1ExpectedHeader,
+                msg2ExpectedHeader)
+        ),
+        //Topic 1 Message 2 + Topic 2 Message 1
+        Triple.of(1, 12,
+            headers(
+                msg1ExpectedHeader,
+                msg2ExpectedHeader)
+        ),
+        //Topic 1 Message 1 + Topic 2 Message 2
+        Triple.of(1, 21,
+            headers(
+                msg1ExpectedHeader
+            )
+        ),
+        //Topic 1 Message 2 + Topic 2 Message 2
+        Triple.of(1, 22,
+            headers(
+                msg1ExpectedHeader,
+                msg2ExpectedHeader)
+        ),
+        //Topic 1 Message 3 + Topic 2 Message 3
+        Triple.of(2, 33, headers())
+    };
 
     CountDownLatch streamsControlLatch = startKStreamTopologyWithTwoStreamJoin();
     injectMessages(topic1Messages, topic2Messages);
-    consumeExpectedNumberOfEvents(5);
+    verifyConsumedOutputEvents(expectedOutputMessages);
     streamsControlLatch.countDown();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(6);
-
-    TracesAssert.assertThat(traces).hasSize(6)
-        .hasTracesSatisfyingExactly(
-            // Input topic 1 message 1 - only goes to StateStore and backing changelog.
-            messageStoredIntoStateStoreOnly(topic1Messages[0]),
-
-            // Input topic 2 message 1 - join to Input topic 1 message 1 stored into state store
-            // above.
-            // StateStore get, output send, StateStore put and changelog send.
-            messageJoinedWithStateStoreMessageAndSentToOutput(topic2Messages[0], topic1Messages[0],
-                outputMessages[0]),
-
-            // Input topic 1 message 2 - reverse join to Input topic 2 message 1 stored into state store
-            // above.
-            // StateStore get, output send, StateStore put and changelog send.
-            messageJoinedWithStateStoreMessageAndSentToOutput(topic1Messages[1], topic2Messages[0],
-                outputMessages[1]),
-
-            // Input topic 2 message 2 - generates 2 output messages as we have 2 message from
-            // topic 1 stored in the state store already join to Input topic 1 message 1, send out,
-            // join to Input topic 1 message 2, send out.
-            // StateStore get, output send, StateStore get, output send, state store put and changelog send.
-            messageJoinedWithStateStoreMessageAndSentToOutputTwice(topic2Messages[1],
-                topic1Messages[0], outputMessages[2],
-                topic1Messages[1], outputMessages[3]),
-
-            // Input topic 1 message 3 - message with new key so again - only goes to StateStore and backing changelog.
-            messageStoredIntoStateStoreOnly(topic1Messages[2]),
-
-            // Input topic 2 message 3 - with new key - single join and output join to
-            // Input topic 1 message 3 stored into state store above.
-            // StateStore get, output send, StateStore put and changelog send.
-            messageJoinedWithStateStoreMessageAndSentToOutput(topic2Messages[2], topic1Messages[2],
-                outputMessages[4])
-        );
-  }
-
-
-  private Consumer<TraceAssert> messageStoredIntoStateStoreOnly(
-      Pair<Integer, Integer> inputMessage) {
-    return trace -> trace.hasSize(4)
-        .hasSpansSatisfyingExactly(
-            //Input produce
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                keyAndValueAttributeAssertions(inputMessage)
-            ),
-            //Input consume
-            span -> span.hasKind(SpanKind.CONSUMER).hasAttributesSatisfying(
-                keyAndValueAttributeAssertions(inputMessage)
-            ),
-            //StateStore PUT
-            span -> span.hasKind(SpanKind.INTERNAL).hasAttributesSatisfying(
-                keyAndValueAttributeAssertions(inputMessage)
-            ),
-            //ChangeLog produce
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                keyAndValueAttributeAssertions(inputMessage)
-            )
-        );
-  }
-
-  private Consumer<TraceAssert> messageJoinedWithStateStoreMessageAndSentToOutput(
-      Pair<Integer, Integer> inputMessage, Pair<Integer, Integer> stateStoreMessage,
-      Pair<Integer, Integer> outputMessage) {
-    return trace -> trace
-        .hasSize(7)
-        .hasSpansSatisfyingExactly(
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                keyAndValueAttributeAssertions(inputMessage)
-            ), //Input produce
-            span -> span.hasKind(SpanKind.CONSUMER).hasAttributesSatisfying(
-                keyAndValueAttributeAssertions(inputMessage)
-            ), //Input consume
-            span -> span.hasKind(SpanKind.INTERNAL).hasAttributesSatisfying(
-                //key/value of message from topic1 stored in StateStore
-                keyAndValueAttributeAssertions(stateStoreMessage)
-            ), //StateStore GET
-
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                // sum of message stored in StateStore and received message
-                keyAndValueAttributeAssertions(outputMessage)
-            ), //Output produce
-
-            span -> span.hasKind(SpanKind.CONSUMER).hasAttributesSatisfying(
-                // sum of message stored in StateStore and received message
-                keyAndValueAttributeAssertions(outputMessage)
-            ), //Output consume
-
-            span -> span.hasKind(SpanKind.INTERNAL).hasAttributesSatisfying(
-                // store value of received message from topic 2 to StateStore.
-                keyAndValueAttributeAssertions(inputMessage)
-            ), //StateStore PUT
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                // send to changelog value of received message from topic 2 to StateStore.
-                keyAndValueAttributeAssertions(inputMessage)
-            ) //ChangeLog produce
-        );
-  }
-
-  private Consumer<TraceAssert> messageJoinedWithStateStoreMessageAndSentToOutputTwice(
-      Pair<Integer, Integer> inputMessage, Pair<Integer, Integer> stateStoreMessage1,
-      Pair<Integer, Integer> outputMessage1, Pair<Integer, Integer> stateStoreMessage2,
-      Pair<Integer, Integer> outputMessage2) {
-    return trace -> trace
-        .hasSize(10)
-        .hasSpansSatisfyingExactly(
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                keyAndValueAttributeAssertions(inputMessage)
-            ), //Input produce
-            span -> span.hasKind(SpanKind.CONSUMER).hasAttributesSatisfying(
-                keyAndValueAttributeAssertions(inputMessage)
-            ), //Input consume
-            span -> span.hasKind(SpanKind.INTERNAL).hasAttributesSatisfying(
-                //key/value of message from topic1 stored in StateStore
-                keyAndValueAttributeAssertions(stateStoreMessage1)
-            ), //StateStore GET
-
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                // sum of message stored in StateStore and received message
-                keyAndValueAttributeAssertions(outputMessage1)
-            ), //Output produce
-
-            span -> span.hasKind(SpanKind.CONSUMER).hasAttributesSatisfying(
-                // sum of message stored in StateStore and received message
-                keyAndValueAttributeAssertions(outputMessage1)
-            ), //Output consume
-
-            span -> span.hasKind(SpanKind.INTERNAL).hasAttributesSatisfying(
-                //key/value of message from topic1 stored in StateStore
-                keyAndValueAttributeAssertions(stateStoreMessage2)
-            ), //StateStore GET
-
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                // sum of message stored in StateStore and received message
-                keyAndValueAttributeAssertions(outputMessage2)
-            ), //Output produce
-
-            span -> span.hasKind(SpanKind.CONSUMER).hasAttributesSatisfying(
-                // sum of message stored in StateStore and received message
-                keyAndValueAttributeAssertions(outputMessage2)
-            ), //Output consume
-
-            span -> span.hasKind(SpanKind.INTERNAL).hasAttributesSatisfying(
-                // store value of received message from topic 2 to StateStore.
-                keyAndValueAttributeAssertions(inputMessage)
-            ), //StateStore PUT
-            span -> span.hasKind(SpanKind.PRODUCER).hasAttributesSatisfying(
-                // send to changelog value of received message from topic 2 to StateStore.
-                keyAndValueAttributeAssertions(inputMessage)
-            ) //ChangeLog produce
-        );
-  }
-
-  Consumer<Attributes> keyAndValueAttributeWithTimestampAssertions(Integer expectedKey,
-      Integer expectedValue) {
-    return keyAttributeAssertions(expectedKey).andThen(
-        valueWithTimestampAttributeAssertions(expectedValue));
-  }
-
-  Consumer<Attributes> keyAndValueAttributeAssertions(Pair<Integer, Integer> expectedKeyValue) {
-    return keyAttributeAssertions(expectedKeyValue.getKey()).andThen(
-        valueAttributeAssertions(expectedKeyValue.getValue()));
-  }
-
-  private Consumer<Attributes> valueWithTimestampAttributeAssertions(int expectedValue) {
-    return attributes -> {
-      assertThat(attributes.get(AttributeKey.stringKey("payload.raw.value")))
-          .contains("{\"value\":" + expectedValue + ",\"timestamp\":");
-
-      assertThat(attributes.get(AttributeKey.stringKey("payload.value.value")))
-          .isEqualTo(String.valueOf(expectedValue));
-      assertThat(attributes.get(AttributeKey.stringKey("payload.value.timestamp")))
-          .isNotBlank();
-    };
-  }
-
-  private Consumer<Attributes> valueAttributeAssertions(int expectedValue) {
-    return attributes -> {
-      assertThat(attributes.get(AttributeKey.stringKey("payload.raw.value")))
-          .isEqualTo(String.valueOf(expectedValue));
-
-      assertThat(attributes.get(AttributeKey.stringKey("payload.value")))
-          .isEqualTo(String.valueOf(expectedValue));
-    };
-  }
-
-  private Consumer<Attributes> keyAttributeAssertions(Integer expectedKey) {
-    return attributes -> {
-      assertThat(attributes.get(AttributeKey.stringKey("payload.raw.key")))
-          .isEqualTo(expectedKey.toString());
-
-      assertThat(attributes.get(AttributeKey.stringKey("payload.key")))
-          .isEqualTo(expectedKey.toString());
-    };
+    assertTracesCaptured(traces,
+        trace().withSpans(
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader),
+            consume(),
+            //T1 M1
+            stateStorePut().withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader)
+                .withoutHeaders(msg1UnexpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-JOINTHIS")
+                .withoutHeaders(msg1ExpectedHeader, msg1UnexpectedHeader)),
+        trace().withSpans(
+            produce(),
+            consume(),
+            stateStoreGet()
+                .withLink()
+                .withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)
+                .withoutHeaders(msg2ExpectedHeader),
+            //Output 1 - T1 M1(from state store) + T2 M1 (from inbound stream)
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            //T2 M1
+            stateStorePut()
+                .withNameContaining("KSTREAM-JOINOTHER")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produceChangelog()
+                .withNameContaining("KSTREAM-JOINOTHER")
+                .withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
+        trace().withSpans(
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStoreGet().withLink().withNameContaining("KSTREAM-JOINOTHER")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            //Output 2 - T1 M2(from inbound stream) + T2 M1 (from state store)
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            // T1 M2
+            stateStorePut().withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-JOINTHIS")),
+        trace().withSpans(
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStoreGet().withLink().withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader),
+            //Output 3 - T1 M1(from state store) + T2 M2 (from inbound stream)
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader),
+            consume(),
+            stateStoreGet().withLink().withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            //Output 4 - T1 M2(from state store) + T2 M2 (from inbound stream)
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStorePut().withNameContaining("KSTREAM-JOINOTHER")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-JOINOTHER")),
+        trace().withSpans(
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStorePut().withNameContaining("KSTREAM-JOINTHIS")
+                .withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-JOINTHIS")),
+        trace().withSpans(
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStoreGet().withLink().withNameContaining("KSTREAM-JOINTHIS")
+                .withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            //Output 5 - T1 M3(from state store) + T2 M3 (from inbound stream)
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStorePut().withNameContaining("KSTREAM-JOINOTHER")
+                .withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-JOINOTHER")));
   }
 
   private CountDownLatch startKStreamTopologyWithTwoStreamJoin() {
@@ -304,9 +246,9 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
           Consumed.with(Serdes.Integer(), Serdes.Integer()));
       KStream<Integer, Integer> stream2 = streamsBuilder.stream(inputTopic2,
           Consumed.with(Serdes.Integer(), Serdes.Integer()));
-      stream1.join(stream2, (ValueJoiner<Integer, Integer, Long>) Long::sum,
-              JoinWindows.of(Duration.ofMillis(200)))
-          .to(outputTopic, Produced.with(Serdes.Integer(), Serdes.Long()));
+      stream1.join(stream2, (ValueJoiner<Integer, Integer, Integer>) Integer::sum,
+              JoinWindows.of(Duration.ofMillis(1000)))
+          .to(outputTopic, Produced.with(Serdes.Integer(), Serdes.Integer()));
     }
 
     KafkaStreams kafkaStreams;
@@ -337,8 +279,10 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
         try {
           streamsLatch.await();
           kafkaStreams.close();
+          kafkaStreams.cleanUp();
         } catch (InterruptedException e) {
           kafkaStreams.close();
+          kafkaStreams.cleanUp();
           Thread.currentThread().interrupt();
         }
       }).start();
@@ -346,23 +290,35 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
     }
   }
 
-  private void injectMessages(Pair<Integer, Integer>[] topic1Messages,
-      Pair<Integer, Integer>[] topic2Messages) {
+  private void injectMessages(Triple<Integer, Integer, Header[]>[] topic1Messages,
+      Triple<Integer, Integer, Header[]>[] topic2Messages) {
     for (int i = 0; i < topic1Messages.length; i++) {
-      commonTestUtils.produceSingleEvent(Serdes.Integer().serializer().getClass(),
-          Serdes.Integer().serializer().getClass(), inputTopic, topic1Messages[i].getKey(),
-          topic1Messages[i].getValue());
+      commonTestUtils.produceSingleEvent(inputTopic, topic1Messages[i].getLeft(),
+          topic1Messages[i].getMiddle(), topic1Messages[i].getRight());
 
-      commonTestUtils.produceSingleEvent(Serdes.Integer().serializer().getClass(),
-          Serdes.Integer().serializer().getClass(), inputTopic2, topic2Messages[i].getKey(),
-          topic2Messages[i].getValue());
+      commonTestUtils.produceSingleEvent(inputTopic2, topic2Messages[i].getLeft(),
+          topic2Messages[i].getMiddle(), topic2Messages[i].getRight());
     }
   }
 
-  private void consumeExpectedNumberOfEvents(int numberOfEventsToConsume) {
-    commonTestUtils.consumeAtLeastXEvents(Serdes.Integer().deserializer().getClass(),
-        Serdes.Long().deserializer().getClass(), outputTopic, numberOfEventsToConsume);
+  private void verifyConsumedOutputEvents(
+      Triple<Integer, Integer, Header[]>[] expectedOutputEvents) {
+    List<ConsumerRecord> consumedRecords = commonTestUtils.consumeAtLeastXEvents(
+        Serdes.Integer().deserializer().getClass(),
+        Serdes.Integer().deserializer().getClass(), outputTopic, expectedOutputEvents.length);
+    IntStream.range(0, consumedRecords.size())
+        .forEach(idx -> assertConsumedRecord(consumedRecords.get(idx), expectedOutputEvents[idx]));
   }
 
+  private void assertConsumedRecord(ConsumerRecord consumedRecord,
+      Triple<Integer, Integer, Header[]> expectation) {
+    assertThat(consumedRecord.key()).isEqualTo(expectation.getLeft());
+    assertThat(consumedRecord.value()).isEqualTo(expectation.getMiddle());
+    assertThat(consumedRecord.headers()).containsAll(Arrays.asList(expectation.getRight()));
+  }
+
+  private Header[] headers(Header... headers) {
+    return headers;
+  }
 }
 

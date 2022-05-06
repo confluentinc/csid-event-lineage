@@ -9,6 +9,9 @@ import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.context.Context;
 
+/**
+ * Handles Span creation.
+ */
 public class SpanHandler {
 
   private final OpenTelemetryWrapper openTelemetryWrapper;
@@ -23,12 +26,13 @@ public class SpanHandler {
     return createAndStartSpan(spanName, parent, linkedSpan);
   }
 
+
   public Span createAndStartSpan(String spanName, Context parent) {
     return createAndStartSpan(spanName, parent, null);
   }
 
-  public void addEventToSpan(Span span, String eventName, Attributes eventAttributes) {
-    span.addEvent(eventName, eventAttributes);
+  public void addEventToSpan(Span spanToAddTo, String eventName, Attributes eventAttributes) {
+    spanToAddTo.addEvent(eventName, eventAttributes);
   }
 
   private Span createAndStartSpan(String spanName, Context parent, SpanContext linkedSpan) {

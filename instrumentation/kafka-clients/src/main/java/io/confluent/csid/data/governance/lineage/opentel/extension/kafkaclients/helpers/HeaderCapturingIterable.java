@@ -12,45 +12,45 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 /**
  * Based on OpenTelemetry kafka-clients {@link TracingIterable}.
  * <p>
- * Wraps ConsumerRecord iterable to allow returning of wrapped Iterator with tracing / payload
- * capture logic
+ * Wraps ConsumerRecord iterable to allow returning of wrapped Iterator with tracing / header
+ * capture logic for header propagation
  */
-public class PayloadCapturingIterable<K, V>
+public class HeaderCapturingIterable<K, V>
     implements Iterable<ConsumerRecord<K, V>>,
     KafkaClientsConsumerProcessWrapper<Iterable<ConsumerRecord<K, V>>> {
 
   private final Iterable<ConsumerRecord<K, V>> delegate;
   private boolean firstIterator = true;
 
-  protected PayloadCapturingIterable(
+  protected HeaderCapturingIterable(
       Iterable<ConsumerRecord<K, V>> delegate) {
     this.delegate = delegate;
   }
 
   /**
-   * Wraps iterable with PayloadCapturingIterable if {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()}
+   * Wraps iterable with {@link HeaderCapturingIterable} if {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()}
    * is true.
    *
    * @param delegate generic ConsumerRecord iterable to wrap
    * @param <K>      ConsumerRecord Key type
    * @param <V>      ConsumerRecord Value type
-   * @return PayloadCapturingIterable
+   * @return {@link HeaderCapturingIterable} or wrapped iterable if wrapping is not enabled.
    */
   public static <K, V> Iterable<ConsumerRecord<K, V>> wrap(
       Iterable<ConsumerRecord<K, V>> delegate) {
     if (KafkaClientsConsumerProcessTracing.wrappingEnabled()) {
-      return new PayloadCapturingIterable<>(delegate);
+      return new HeaderCapturingIterable<>(delegate);
     }
     return delegate;
   }
 
   /**
-   * Wraps iterator with PayloadCapturingIterator on first call, subsequent calls return already
+   * Wraps iterator with HeaderCapturingIterator on first call, subsequent calls return already
    * wrapped iterator.
    * <p>
    * Not thread-safe.
    *
-   * @return {@link PayloadCapturingIterator}
+   * @return {@link HeaderCapturingIterator}
    */
   @Override
   public Iterator<ConsumerRecord<K, V>> iterator() {
@@ -59,7 +59,7 @@ public class PayloadCapturingIterable<K, V>
     // However, this is not thread-safe, but usually the first (hopefully only) traversal of
     // ConsumerRecords is performed in the same thread that called poll()
     if (firstIterator) {
-      it = PayloadCapturingIterator.wrap(delegate.iterator());
+      it = HeaderCapturingIterator.wrap(delegate.iterator());
       firstIterator = false;
     } else {
       it = delegate.iterator();

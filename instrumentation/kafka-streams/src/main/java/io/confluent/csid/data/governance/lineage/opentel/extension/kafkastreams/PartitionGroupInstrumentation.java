@@ -3,13 +3,13 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.openTelemetryWrapper;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.payloadHandler;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.headersHandler;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPackagePrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.returns;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHolder;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;
@@ -21,11 +21,14 @@ import org.apache.kafka.streams.processor.internals.StampedRecord;
 /**
  * Based on OpenTelemetry kafka-streams PartitionGroupInstrumentation.
  * <p>
- * Captures consumed payload as records are iterated using {@link PartitionGroup#nextRecord}
- * method.
+ * Store configured headers in {@link HeadersHolder}  for automatic propagation on produce.
+ * <p>
+ * Capture header key/values as Span attributes according to configured whitelist. Headers are
+ * captured according to configured  as is (as byte[] values) and recorded to consume span assuming
+ * String values.
  * <p>
  * {@link PartitionGroup#nextRecord} advice in OpenTelemetry kafka-streams instrumentation starts
- * the span to which payload attributes are added.
+ * the span to which captured header attributes are added.
  */
 public class PartitionGroupInstrumentation implements TypeInstrumentation {
 
@@ -57,8 +60,8 @@ public class PartitionGroupInstrumentation implements TypeInstrumentation {
       if (record == null) {
         return;
       }
-      payloadHandler().captureKeyValuePayloadsToSpan(record.key(), record.value(),
-          openTelemetryWrapper().currentSpan());
+      headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
+          record.headers().toArray());
     }
   }
 }
