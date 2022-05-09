@@ -24,6 +24,7 @@ dependencies {
     testImplementation("com.github.wnameless.json:json-base:${versions.jsonBase}")
     testImplementation("org.apache.kafka:kafka-clients:${versions.kafka}")
     testImplementation("org.apache.kafka:kafka-streams:${versions.kafka}")
+    testImplementation("ch.qos.logback:logback-classic:${versions.logback}")
 
 
 }

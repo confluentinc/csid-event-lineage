@@ -26,7 +26,6 @@ dependencies {
     add("muzzleBootstrap", "io.opentelemetry.javaagent:opentelemetry-javaagent-instrumentation-api:${versions.opentelemetryJavaagentAlpha}")
     add("muzzleTooling", "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${versions.opentelemetryJavaagentAlpha}")
     add("muzzleTooling", "io.opentelemetry.javaagent:opentelemetry-javaagent-tooling:${versions.opentelemetryJavaagentAlpha}")
-    add("muzzleTooling", "org.slf4j:slf4j-simple:${versions.slf4j}")
 
     //test dependencies
     testInstrumentation "io.opentelemetry.javaagent.instrumentation:opentelemetry-javaagent-kafka-clients-0.11:${versions.opentelemetryJavaagentAlpha}"
@@ -34,7 +33,6 @@ dependencies {
     testImplementation("org.testcontainers:kafka:${versions.testContainersKafka}")
     testImplementation("org.apache.kafka:kafka-clients:${versions.kafka}")
     testImplementation("org.awaitility:awaitility:${versions.awaitility}")
-    testImplementation("org.slf4j:slf4j-simple:${versions.slf4j}")
 
 
 }
