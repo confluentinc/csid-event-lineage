@@ -65,7 +65,7 @@ public class HeaderCapturingIterator<K, V>
   public ConsumerRecord<K, V> next() {
     ConsumerRecord<K, V> record = delegateIterator.next();
     if (record != null) {
-      headersHandler().storeHeadersForPropagation(record.headers().toArray());
+      headersHandler().storeHeadersForPropagation(record.headers());
       headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
           record.headers().toArray());
     } else {

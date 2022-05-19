@@ -53,8 +53,9 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 /**
  * Test for tracing propagation during KStream to KStream join operations that utilize StateStore
  * put and fetch.
- * <p>
+ * <pre>
  * See {@link org.apache.kafka.streams.kstream.internals.KStreamKStreamJoin.KStreamKStreamJoinProcessor#process}
+ * </pre>
  */
 public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
 
@@ -307,14 +308,18 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
         Serdes.Integer().deserializer().getClass(),
         Serdes.Integer().deserializer().getClass(), outputTopic, expectedOutputEvents.length);
     IntStream.range(0, consumedRecords.size())
-        .forEach(idx -> assertConsumedRecord(consumedRecords.get(idx), expectedOutputEvents[idx]));
+        .forEach(
+            idx -> assertConsumedRecord(consumedRecords.get(idx), idx, expectedOutputEvents[idx]));
   }
 
-  private void assertConsumedRecord(ConsumerRecord consumedRecord,
+  private void assertConsumedRecord(ConsumerRecord consumedRecord, int index,
       Triple<Integer, Integer, Header[]> expectation) {
-    assertThat(consumedRecord.key()).isEqualTo(expectation.getLeft());
-    assertThat(consumedRecord.value()).isEqualTo(expectation.getMiddle());
-    assertThat(consumedRecord.headers()).containsAll(Arrays.asList(expectation.getRight()));
+    assertThat(consumedRecord.key()).as("Verifying Consumer record key for record " + index)
+        .isEqualTo(expectation.getLeft());
+    assertThat(consumedRecord.value()).as("Verifying Consumer record value for record" + index)
+        .isEqualTo(expectation.getMiddle());
+    assertThat(consumedRecord.headers()).as("Verifying Consumer record headers for record" + index)
+        .containsAll(Arrays.asList(expectation.getRight()));
   }
 
   private Header[] headers(Header... headers) {

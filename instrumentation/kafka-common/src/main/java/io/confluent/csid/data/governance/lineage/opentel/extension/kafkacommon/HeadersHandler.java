@@ -96,10 +96,8 @@ public class HeadersHandler {
    *
    * @param headers to store
    */
-  public void storeHeadersForPropagation(Header[] headers) {
-    Header[] headersForPropagation = filterHeaders(
-        headers, headerCaptureConfiguration.getHeaderPropagationWhitelist());
-    HeadersHolder.store(headersForPropagation);
+  public void storeHeadersForPropagation(Headers headers) {
+    HeadersHolder.store(headers);
   }
 
   /**
