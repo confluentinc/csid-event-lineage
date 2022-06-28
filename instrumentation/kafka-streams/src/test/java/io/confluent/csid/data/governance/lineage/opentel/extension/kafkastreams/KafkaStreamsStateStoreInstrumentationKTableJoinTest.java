@@ -17,14 +17,9 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -57,6 +52,8 @@ public class KafkaStreamsStateStoreInstrumentationKTableJoinTest {
   private CommonTestUtils commonTestUtils;
   private final CountDownLatch streamsLatch = new CountDownLatch(1);
 
+  private KafkaStreams kafkaStreams;
+
   @BeforeAll
   static void setupAll() {
     setupHeaderConfiguration();
@@ -79,6 +76,7 @@ public class KafkaStreamsStateStoreInstrumentationKTableJoinTest {
   @AfterEach
   void teardown() {
     streamsLatch.countDown();
+    commonTestUtils.awaitKStreamsShutdown(kafkaStreams);
     commonTestUtils.stopKafkaContainer();
     instrumentation.clearData();
   }
@@ -90,7 +88,7 @@ public class KafkaStreamsStateStoreInstrumentationKTableJoinTest {
     String key = "key";
     String value = "value";
 
-    KafkaStreams kafkaStreams = prepareKStreamTopologyWithKTable();
+    kafkaStreams = prepareKStreamTopologyWithKTable();
     commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic, outputTopic, ktableTopic);
 
     commonTestUtils.produceSingleEvent(ktableTopic, key, value, CAPTURED_PROPAGATED_HEADER);

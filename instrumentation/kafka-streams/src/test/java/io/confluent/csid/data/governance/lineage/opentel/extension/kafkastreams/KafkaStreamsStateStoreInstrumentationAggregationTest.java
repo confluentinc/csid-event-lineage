@@ -20,16 +20,12 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
@@ -64,7 +60,8 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
 
   private CommonTestUtils commonTestUtils;
 
-  CountDownLatch streamsLatch = new CountDownLatch(1);
+  private CountDownLatch streamsLatch = new CountDownLatch(1);
+  private KafkaStreams kafkaStreams;
 
   @BeforeAll
   static void setupAll() {
@@ -87,6 +84,7 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
   @AfterEach
   void teardown() {
     streamsLatch.countDown();
+    commonTestUtils.awaitKStreamsShutdown(kafkaStreams);
     commonTestUtils.stopKafkaContainer();
     instrumentation.clearData();
   }
@@ -106,7 +104,7 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
         .aggregate(() -> "", (k, v, c) -> c + "," + v.charAt(0),
             Materialized.with(Serdes.String(), Serdes.String()))
         .toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
-    KafkaStreams kafkaStreams = new KafkaStreams(streamsBuilder.build(),
+    kafkaStreams = new KafkaStreams(streamsBuilder.build(),
         commonTestUtils.getPropertiesForStreams());
     commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic, outputTopic);
 
@@ -164,7 +162,7 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
         .aggregate(() -> "", (k, v, c) -> c + "," + v.charAt(0), materialized)
         .toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Properties properties = commonTestUtils.getPropertiesForStreams();
-    KafkaStreams kafkaStreams = new KafkaStreams(streamsBuilder.build(), properties);
+    kafkaStreams = new KafkaStreams(streamsBuilder.build(), properties);
     commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic, outputTopic);
 
     commonTestUtils.produceSingleEvent(inputTopic, key, value, sentHeaders);
@@ -225,7 +223,7 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
         .toStream((k, v) -> k.key() + " : " + k.window().toString())
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Properties properties = commonTestUtils.getPropertiesForStreams();
-    KafkaStreams kafkaStreams = new KafkaStreams(streamsBuilder.build(), properties);
+    kafkaStreams = new KafkaStreams(streamsBuilder.build(), properties);
     commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic, outputTopic);
 
 

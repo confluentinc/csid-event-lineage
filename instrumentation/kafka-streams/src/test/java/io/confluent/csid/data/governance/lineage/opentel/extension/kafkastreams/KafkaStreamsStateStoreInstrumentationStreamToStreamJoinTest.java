@@ -149,11 +149,12 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
         //Topic 1 Message 3 + Topic 2 Message 3
         Triple.of(2, 33, headers())
     };
-
-    CountDownLatch streamsControlLatch = startKStreamTopologyWithTwoStreamJoin();
+    CountDownLatch streamsControlLatch = new CountDownLatch(1);
+    KafkaStreams kafkaStreams = startKStreamTopologyWithTwoStreamJoin(streamsControlLatch);
     injectMessages(topic1Messages, topic2Messages);
     verifyConsumedOutputEvents(expectedOutputMessages);
     streamsControlLatch.countDown();
+    commonTestUtils.awaitKStreamsShutdown(kafkaStreams);
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(6);
     assertTracesCaptured(traces,
@@ -236,7 +237,7 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
             produceChangelog().withNameContaining("KSTREAM-JOINOTHER")));
   }
 
-  private CountDownLatch startKStreamTopologyWithTwoStreamJoin() {
+  private KafkaStreams startKStreamTopologyWithTwoStreamJoin(CountDownLatch streamsLatch) {
 
     StreamsBuilder streamsBuilder = new StreamsBuilder();
     Properties properties = commonTestUtils.getPropertiesForStreams();
@@ -269,11 +270,11 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
           new NewTopic(inputTopic, 1, (short) 1),
           new NewTopic(inputTopic2, 1, (short) 1),
           new NewTopic(outputTopic, 1, (short) 1)));
+      adminClient.close();
     }
 
     //Start kafka streams and return control latch
     {
-      CountDownLatch streamsLatch = new CountDownLatch(1);
       new Thread(() -> {
         kafkaStreams.start();
         try {
@@ -286,7 +287,7 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
           Thread.currentThread().interrupt();
         }
       }).start();
-      return streamsLatch;
+      return kafkaStreams;
     }
   }
 

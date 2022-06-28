@@ -35,6 +35,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KafkaStreams.State;
 import org.apache.kafka.streams.StreamsConfig;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -171,10 +172,13 @@ public class CommonTestUtils {
 
   public void createTopologyAndStartKStream(KafkaStreams kafkaStreams, CountDownLatch streamsLatch,
       String... topics) {
-    AdminClient adminClient = KafkaAdminClient.create(
-        getKafkaProperties(new Properties()));
-    adminClient.createTopics(Arrays.stream(topics).map(topic ->
-        new NewTopic(topic, 1, (short) 1)).collect(Collectors.toList()));
+    if (topics != null && topics.length > 0) {
+      AdminClient adminClient = KafkaAdminClient.create(
+          getKafkaProperties(new Properties()));
+      adminClient.createTopics(Arrays.stream(topics).map(topic ->
+          new NewTopic(topic, 1, (short) 1)).collect(Collectors.toList()));
+      adminClient.close();
+    }
 
     new Thread(() -> {
       kafkaStreams.start();
@@ -188,5 +192,9 @@ public class CommonTestUtils {
         Thread.currentThread().interrupt();
       }
     }).start();
+  }
+
+  public void awaitKStreamsShutdown(KafkaStreams kafkaStreams) {
+    await().atMost(Duration.ofSeconds(60)).until(()->kafkaStreams.state().equals(State.NOT_RUNNING));
   }
 }

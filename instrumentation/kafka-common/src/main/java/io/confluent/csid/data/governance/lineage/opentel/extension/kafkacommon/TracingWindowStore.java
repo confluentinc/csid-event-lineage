@@ -42,14 +42,6 @@ public class TracingWindowStore extends
     wrapped().init(context, root);
   }
 
-  @Deprecated
-  @Override
-  public void put(Bytes key, byte[] value) {
-    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
-        value, headersAccessor.get().toArray());
-    wrapped().put(key, valueWithTrace);
-  }
-
   @Override
   public void put(Bytes key, byte[] value, long windowStartTimestamp) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
