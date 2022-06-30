@@ -23,9 +23,11 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -41,7 +43,6 @@ import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.JoinWindows;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.kstream.ValueJoiner;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -150,7 +151,8 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
         Triple.of(2, 33, headers())
     };
     CountDownLatch streamsControlLatch = new CountDownLatch(1);
-    KafkaStreams kafkaStreams = startKStreamTopologyWithTwoStreamJoin(streamsControlLatch);
+    KafkaStreams kafkaStreams = startKStreamTopologyWithTwoStreamJoin(streamsControlLatch,
+        this::createTwoStreamJoinTopology);
     injectMessages(topic1Messages, topic2Messages);
     verifyConsumedOutputEvents(expectedOutputMessages);
     streamsControlLatch.countDown();
@@ -237,19 +239,172 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
             produceChangelog().withNameContaining("KSTREAM-JOINOTHER")));
   }
 
-  private KafkaStreams startKStreamTopologyWithTwoStreamJoin(CountDownLatch streamsLatch) {
+  @Test
+  @DisplayName("Test KStream with KStream Left Join with header propagation and capture")
+  void testKStreamWithLeftJoinedKStreamHeaderPropagationAndCapture() {
+    Header msg1ExpectedHeader = CAPTURED_PROPAGATED_HEADER;
+    Header msg2ExpectedHeader = CAPTURED_PROPAGATED_HEADER_2;
+    Header msg1UnexpectedHeader = NOT_WHITELISTED_HEADERS[0];
+    Header msg2UnexpectedHeader = NOT_WHITELISTED_HEADERS[1];
 
-    StreamsBuilder streamsBuilder = new StreamsBuilder();
+    Triple<Integer, Integer, Header[]>[] topic1Messages = new Triple[]{
+        Triple.of(1, 1,
+            headers(
+                msg1ExpectedHeader,
+                msg1UnexpectedHeader)
+        ),
+        Triple.of(1, 2, new Header[0]),
+        Triple.of(2, 3, new Header[0])};
+
+    Triple<Integer, Integer, Header[]>[] topic2Messages = new Triple[]{
+        Triple.of(1, 10,
+            headers(
+                msg2ExpectedHeader,
+                msg2UnexpectedHeader)
+        ),
+        Triple.of(1, 20, new Header[0]),
+        Triple.of(2, 30, new Header[0])};
+
+    Triple<Integer, Integer, Header[]>[] expectedOutputMessages = new Triple[]{
+        //Topic 1 Message 1
+        Triple.of(1, 1,
+            headers(
+                msg1ExpectedHeader)
+        ),
+        //Topic 1 Message 1 + Topic 2 Message 1
+        Triple.of(1, 11,
+            headers(
+                msg1ExpectedHeader,
+                msg2ExpectedHeader)
+        ),
+        //Topic 1 Message 2 + Topic 2 Message 1
+        Triple.of(1, 12,
+            headers(
+                msg1ExpectedHeader,
+                msg2ExpectedHeader)
+        ),
+        //Topic 1 Message 1 + Topic 2 Message 2
+        Triple.of(1, 21,
+            headers(
+                msg1ExpectedHeader
+            )
+        ),
+        //Topic 1 Message 2 + Topic 2 Message 2
+        Triple.of(1, 22,
+            headers(
+                msg1ExpectedHeader,
+                msg2ExpectedHeader)
+        ),
+        //Topic 1 Message 3
+        Triple.of(2, 3, headers()),
+        //Topic 1 Message 3 + Topic 2 Message 3
+        Triple.of(2, 33, headers())
+    };
+    CountDownLatch streamsControlLatch = new CountDownLatch(1);
+    KafkaStreams kafkaStreams = startKStreamTopologyWithTwoStreamJoin(streamsControlLatch,
+        this::createTwoStreamLeftJoinTopology);
+    injectMessages(topic1Messages, topic2Messages);
+    verifyConsumedOutputEvents(expectedOutputMessages);
+    streamsControlLatch.countDown();
+    commonTestUtils.awaitKStreamsShutdown(kafkaStreams);
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(6);
+    assertTracesCaptured(traces,
+        trace().withSpans(
+
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader),
+            consume(),
+            //Output 1 - T1 M1 - left outer join message
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStorePut().withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader)
+                .withoutHeaders(msg1UnexpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-JOINTHIS")
+                .withoutHeaders(msg1ExpectedHeader, msg1UnexpectedHeader)),
+        trace().withSpans(
+            produce(),
+            consume(),
+            stateStoreGet()
+                .withLink()
+                .withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)
+                .withoutHeaders(msg2ExpectedHeader),
+            //Output 2 - T1 M1(from state store) + T2 M1 (from inbound stream)
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            //T2 M1
+            stateStorePut()
+                .withNameContaining("KSTREAM-OUTEROTHER")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produceChangelog()
+                .withNameContaining("KSTREAM-OUTEROTHER")
+                .withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
+        trace().withSpans(
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStoreGet().withLink().withNameContaining("KSTREAM-OUTEROTHER")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            //Output 3 - T1 M2(from inbound stream) + T2 M1 (from state store)
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            // T1 M2
+            stateStorePut().withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-JOINTHIS")),
+        trace().withSpans(
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStoreGet().withLink().withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader),
+            //Output 4 - T1 M1(from state store) + T2 M2 (from inbound stream)
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader),
+            consume(),
+            stateStoreGet().withLink().withNameContaining("KSTREAM-JOINTHIS")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            //Output 5 - T1 M2(from state store) + T2 M2 (from inbound stream)
+            produce().withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStorePut().withNameContaining("KSTREAM-OUTEROTHER")
+                .withHeaders(CHARSET_UTF_8, msg1ExpectedHeader, msg2ExpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-OUTEROTHER")),
+        trace().withSpans(
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            //Output 6 - T1 M3 - left outer join
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStorePut().withNameContaining("KSTREAM-JOINTHIS")
+                .withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-JOINTHIS")),
+        trace().withSpans(
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStoreGet().withLink().withNameContaining("KSTREAM-JOINTHIS")
+                .withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            //Output 7 - T1 M3(from state store) + T2 M3 (from inbound stream)
+            produce().withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            consume(),
+            stateStorePut().withNameContaining("KSTREAM-OUTEROTHER")
+                .withoutHeaders(msg1ExpectedHeader, msg2ExpectedHeader),
+            produceChangelog().withNameContaining("KSTREAM-OUTEROTHER")));
+  }
+
+  private KafkaStreams startKStreamTopologyWithTwoStreamJoin(CountDownLatch streamsLatch,
+      Supplier<StreamsBuilder> topologySupplier) {
+
+    StreamsBuilder streamsBuilder;
     Properties properties = commonTestUtils.getPropertiesForStreams();
     // Create topology
     {
-      KStream<Integer, Integer> stream1 = streamsBuilder.stream(inputTopic,
-          Consumed.with(Serdes.Integer(), Serdes.Integer()));
-      KStream<Integer, Integer> stream2 = streamsBuilder.stream(inputTopic2,
-          Consumed.with(Serdes.Integer(), Serdes.Integer()));
-      stream1.join(stream2, (ValueJoiner<Integer, Integer, Integer>) Integer::sum,
-              JoinWindows.of(Duration.ofMillis(1000)))
-          .to(outputTopic, Produced.with(Serdes.Integer(), Serdes.Integer()));
+      streamsBuilder = topologySupplier.get();
     }
 
     KafkaStreams kafkaStreams;
@@ -289,6 +444,33 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
       }).start();
       return kafkaStreams;
     }
+  }
+
+  private StreamsBuilder createTwoStreamJoinTopology() {
+    StreamsBuilder streamsBuilder = new StreamsBuilder();
+    KStream<Integer, Integer> stream1 = streamsBuilder.stream(inputTopic,
+        Consumed.with(Serdes.Integer(), Serdes.Integer()));
+    KStream<Integer, Integer> stream2 = streamsBuilder.stream(inputTopic2,
+        Consumed.with(Serdes.Integer(), Serdes.Integer()));
+    stream1.join(stream2,
+            Integer::sum,
+            JoinWindows.of(Duration.ofMillis(1000)))
+        .to(outputTopic, Produced.with(Serdes.Integer(), Serdes.Integer()));
+    return streamsBuilder;
+  }
+
+
+  private StreamsBuilder createTwoStreamLeftJoinTopology() {
+    StreamsBuilder streamsBuilder = new StreamsBuilder();
+    KStream<Integer, Integer> stream1 = streamsBuilder.stream(inputTopic,
+        Consumed.with(Serdes.Integer(), Serdes.Integer()));
+    KStream<Integer, Integer> stream2 = streamsBuilder.stream(inputTopic2,
+        Consumed.with(Serdes.Integer(), Serdes.Integer()));
+    stream1.leftJoin(stream2,
+            (val1, val2) -> Optional.ofNullable(val1).orElse(0) + Optional.ofNullable(val2).orElse(0),
+            JoinWindows.of(Duration.ofMillis(1000)))
+        .to(outputTopic, Produced.with(Serdes.Integer(), Serdes.Integer()));
+    return streamsBuilder;
   }
 
   private void injectMessages(Triple<Integer, Integer, Header[]>[] topic1Messages,
