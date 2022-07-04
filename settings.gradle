@@ -2,6 +2,7 @@ rootProject.name = 'lineage-instrumentation-extensions'
 
 include "agent"
 include "instrumentation"
-include "instrumentation:kafka-common"
 include "instrumentation:kafka-clients"
+include "instrumentation:kafka-common"
+include "instrumentation:kafka-connect"
 include "instrumentation:kafka-streams"

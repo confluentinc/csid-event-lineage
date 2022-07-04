@@ -33,6 +33,8 @@ dependencies {
     testImplementation("org.testcontainers:kafka:${versions.testContainersKafka}")
     testImplementation("org.apache.kafka:kafka-clients:${versions.kafka}")
     testImplementation("org.awaitility:awaitility:${versions.awaitility}")
+    testImplementation("org.apache.commons:commons-lang3:${versions.apacheCommons3}")
+
 
 
 }
