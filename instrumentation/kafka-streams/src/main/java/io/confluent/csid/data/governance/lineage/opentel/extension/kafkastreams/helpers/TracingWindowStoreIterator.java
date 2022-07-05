@@ -1,8 +1,10 @@
 /*
  * Copyright 2022 Confluent Inc.
  */
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.WindowStoreIterator;

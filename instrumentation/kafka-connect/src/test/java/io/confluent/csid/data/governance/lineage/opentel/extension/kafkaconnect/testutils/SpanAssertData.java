@@ -58,6 +58,23 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     return spanAssertData;
   }
 
+  public static SpanAssertData sourceTask() {
+    SpanAssertData spanAssertData = new SpanAssertData();
+    spanAssertData.assertions = spanAssert ->
+        spanAssert
+            .hasKind(SpanKind.INTERNAL)
+            .satisfies(spanData -> assertThat(spanData.getName()).contains(SpanNames.SOURCE_TASK));
+    return spanAssertData;
+  }
+
+  public static SpanAssertData sinkTask() {
+    SpanAssertData spanAssertData = new SpanAssertData();
+    spanAssertData.assertions = spanAssert ->
+        spanAssert
+            .hasKind(SpanKind.INTERNAL)
+            .satisfies(spanData -> assertThat(spanData.getName()).contains(SpanNames.SINK_TASK));
+    return spanAssertData;
+  }
   public static SpanAssertData stateStorePut() {
     SpanAssertData spanAssertData = new SpanAssertData();
     spanAssertData.assertions = spanAssert ->

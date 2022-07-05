@@ -35,6 +35,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+import org.apache.kafka.connect.tools.VerifiableSinkTask;
 import org.apache.kafka.connect.tools.VerifiableSourceTask;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -80,13 +81,30 @@ public class CommonTestUtils {
         "org.apache.kafka.connect.tools.VerifiableSourceConnector");
     props.put(VerifiableSourceTask.TOPIC_CONFIG, topic);
     props.put(VerifiableSourceTask.THROUGHPUT_CONFIG, "1");
+
+    props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
+    return props;
+  }
+  public Properties getSinkTaskProperties(Properties overrides, String topic) {
+    Properties props = new Properties();
+    props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSinkTask1");
+    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG,
+        "org.apache.kafka.connect.tools.VerifiableSinkConnector");
+    props.put(VerifiableSinkTask.TOPICS_CONFIG, topic);
+
+    props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
+    return props;
+  }
+
+  public Properties getHeaderInjectTrasnformProperties(){
+    Properties props = new Properties();
+
     props.put("transforms", "insertHeader");
     props.put("transforms.insertHeader.type",
         "io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.InsertHeaderBytes");
     props.put("transforms.insertHeader.header", CAPTURED_PROPAGATED_HEADER.key());
     props.put("transforms.insertHeader.value.literal",
         new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8));
-    props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
     return props;
   }
 

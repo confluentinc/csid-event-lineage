@@ -1,10 +1,11 @@
 /*
  * Copyright 2022 Confluent Inc.
  */
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.TIMESTAMP_LENGTH;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
 import java.nio.ByteBuffer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.streams.processor.StateStore;

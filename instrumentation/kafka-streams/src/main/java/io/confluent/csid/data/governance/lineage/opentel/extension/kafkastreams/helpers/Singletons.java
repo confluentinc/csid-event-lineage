@@ -9,7 +9,6 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.H
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.SpanHandler;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ValueAndTimestampHandler;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -26,7 +25,7 @@ public class Singletons {
       headerCaptureConfiguration());
 
   private static final SpanHandler SPAN_HANDLER = new SpanHandler(openTelemetryWrapper(),
-      Constants.INSTRUMENTATION_NAME);
+      Constants.INSTRUMENTATION_NAME_KAFKA_STREAMS);
 
   private static final StateStorePropagationHelpers STATE_STORE_PROPAGATION_HELPERS = new StateStorePropagationHelpers(
       openTelemetryWrapper(), spanHandler(), headersHandler(), headerCaptureConfiguration());

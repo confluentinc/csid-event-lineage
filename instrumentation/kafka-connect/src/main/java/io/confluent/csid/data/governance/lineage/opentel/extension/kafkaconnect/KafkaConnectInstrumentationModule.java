@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Confluent Inc.
+ * Copyright 2022 Confluent Inc.
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
@@ -46,7 +46,9 @@ public final class KafkaConnectInstrumentationModule extends InstrumentationModu
   @Override
   public List<TypeInstrumentation> typeInstrumentations() {
     return asList(
-        new ConnectTransformationInstrumentation()
+        new ConnectTransformationInstrumentation(),
+        new ConnectSinkTaskInstrumentation(),
+        new ConnectWorkerSourceTaskInstrumentation()
     );
   }
 

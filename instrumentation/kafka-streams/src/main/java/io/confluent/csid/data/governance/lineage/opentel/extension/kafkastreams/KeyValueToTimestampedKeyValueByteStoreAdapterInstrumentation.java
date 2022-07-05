@@ -9,7 +9,7 @@ import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
 import static net.bytebuddy.matcher.ElementMatchers.isPackagePrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.TracingKeyValueStore;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingKeyValueStore;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;

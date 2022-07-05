@@ -35,8 +35,16 @@ public class Constants {
    */
   public class SpanNames {
 
+    public static final String SOURCE_TASK = "source-task";
 
-    public static final String SMT= "SMT";
+    public static final String SINK_TASK = "sink-task";
+
+    /**
+     * Span name format - "topic source-task"  "topic sink-task" - i.e. "OutputTopic-123 source-task"
+     */
+    public static final String TASK_SPAN_NAME_FORMAT = "%s %s";
+
+    public static final String SMT = "SMT";
     /**
      * Span name format - "SMT smt-name" - i.e. "SMT HeaderExtractor"
      */

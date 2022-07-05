@@ -38,6 +38,7 @@ import org.apache.kafka.connect.util.FutureCallback;
 @Slf4j
 @RequiredArgsConstructor
 public class ConnectStandalone {
+
   private Connect connect;
   private final Properties workerProperties;
   private final Properties connectorProperties;
@@ -81,22 +82,22 @@ public class ConnectStandalone {
       try {
         connect.start();
 
-          Map<String, String> connectorProps = Utils.propsToStringMap(connectorProperties);
-          FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>(
-              new Callback<Herder.Created<ConnectorInfo>>() {
-                @Override
-                public void onCompletion(Throwable error, Herder.Created<ConnectorInfo> info) {
-                  if (error != null) {
-                    log.error("Failed to create job for {}", connectorProperties);
-                  } else {
-                    log.info("Created connector {}", info.result().name());
-                  }
+        Map<String, String> connectorProps = Utils.propsToStringMap(connectorProperties);
+        FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>(
+            new Callback<Herder.Created<ConnectorInfo>>() {
+              @Override
+              public void onCompletion(Throwable error, Herder.Created<ConnectorInfo> info) {
+                if (error != null) {
+                  log.error("Failed to create job for {}", connectorProperties);
+                } else {
+                  log.info("Created connector {}", info.result().name());
                 }
-              });
-          herder.putConnectorConfig(
-              connectorProps.get(ConnectorConfig.NAME_CONFIG),
-              connectorProps, false, cb);
-          cb.get();
+              }
+            });
+        herder.putConnectorConfig(
+            connectorProps.get(ConnectorConfig.NAME_CONFIG),
+            connectorProps, false, cb);
+        cb.get();
 
       } catch (Throwable t) {
         log.error("Stopping after connector error", t);
@@ -121,6 +122,10 @@ public class ConnectStandalone {
       }
     } catch (Exception e) {
     } // suppressed
+  }
+
+  public boolean isRunning() {
+    return connect != null && connect.isRunning();
   }
 }
 

@@ -1,6 +1,5 @@
 dependencies {
     compileOnly("org.apache.kafka:kafka-clients:${versions.kafka}")
-    compileOnly("org.apache.kafka:kafka-streams:${versions.kafka}")
     compileOnly("com.github.wnameless.json:json-flattener:${versions.jsonFlattener}")
     compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
