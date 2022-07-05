@@ -1,7 +1,7 @@
 /*
  * Copyright 2022 Confluent Inc.
  */
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.HEADER_ATTRIBUTE_PREFIX;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames.STATE_STORE_DELETE;
@@ -10,6 +10,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.testing.assertj.SpanDataAssert;
@@ -27,19 +28,19 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     this.assertions.accept(spanDataAssert);
   }
 
-  static SpanAssertData produce() {
+  public static SpanAssertData produce() {
     SpanAssertData spanAssertData = new SpanAssertData();
     spanAssertData.assertions = spanAssert -> spanAssert.hasKind(SpanKind.PRODUCER);
     return spanAssertData;
   }
 
-  static SpanAssertData consume() {
+  public static SpanAssertData consume() {
     SpanAssertData spanAssertData = new SpanAssertData();
     spanAssertData.assertions = spanAssert -> spanAssert.hasKind(SpanKind.CONSUMER);
     return spanAssertData;
   }
 
-  static SpanAssertData stateStoreGet() {
+  public static SpanAssertData stateStoreGet() {
     SpanAssertData spanAssertData = new SpanAssertData();
     spanAssertData.assertions = spanAssert ->
         spanAssert
@@ -48,7 +49,16 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     return spanAssertData;
   }
 
-  static SpanAssertData stateStorePut() {
+  public static SpanAssertData smt() {
+    SpanAssertData spanAssertData = new SpanAssertData();
+    spanAssertData.assertions = spanAssert ->
+        spanAssert
+            .hasKind(SpanKind.INTERNAL)
+            .satisfies(spanData -> assertThat(spanData.getName()).contains(SpanNames.SMT));
+    return spanAssertData;
+  }
+
+  public static SpanAssertData stateStorePut() {
     SpanAssertData spanAssertData = new SpanAssertData();
     spanAssertData.assertions = spanAssert ->
         spanAssert
@@ -57,7 +67,7 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     return spanAssertData;
   }
 
-  static SpanAssertData stateStoreDelete() {
+  public static SpanAssertData stateStoreDelete() {
     SpanAssertData spanAssertData = new SpanAssertData();
     spanAssertData.assertions = spanAssert ->
         spanAssert
@@ -66,7 +76,7 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     return spanAssertData;
   }
 
-  static SpanAssertData produceChangelog() {
+  public static SpanAssertData produceChangelog() {
     SpanAssertData spanAssertData = new SpanAssertData();
     spanAssertData.assertions = spanAssert ->
         spanAssert
@@ -75,7 +85,7 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     return spanAssertData;
   }
 
-  SpanAssertData withHeaders(Charset charset, Header... expectedHeaders) {
+  public SpanAssertData withHeaders(Charset charset, Header... expectedHeaders) {
     this.assertions = this.assertions.andThen(
         spanAssert -> spanAssert.hasAttributesSatisfying(attributes ->
             Arrays.stream(expectedHeaders).forEach(header ->
@@ -84,7 +94,7 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     return this;
   }
 
-  SpanAssertData withoutHeaders(String... notExpectedHeaderKeys) {
+  public SpanAssertData withoutHeaders(String... notExpectedHeaderKeys) {
     this.assertions = this.assertions.andThen(
         spanAssert -> spanAssert.hasAttributesSatisfying(attributes ->
             Arrays.stream(notExpectedHeaderKeys).forEach(headerKey ->
@@ -92,7 +102,7 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     return this;
   }
 
-  SpanAssertData withoutHeaders(Header... notExpectedHeaders) {
+  public SpanAssertData withoutHeaders(Header... notExpectedHeaders) {
     this.assertions = this.assertions.andThen(
         spanAssert -> spanAssert.hasAttributesSatisfying(attributes ->
             Arrays.stream(notExpectedHeaders).forEach(header ->
@@ -100,13 +110,13 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
     return this;
   }
 
-  SpanAssertData withLink() {
+  public SpanAssertData withLink() {
     this.assertions = this.assertions.andThen(
         spanAssert -> spanAssert.hasTotalRecordedLinks(1));
     return this;
   }
 
-  SpanAssertData withNameContaining(String containing) {
+  public SpanAssertData withNameContaining(String containing) {
     this.assertions = this.assertions.andThen(
         spanAssert -> spanAssert.satisfies(
             spanData -> assertThat(spanData.getName()).contains(containing)));

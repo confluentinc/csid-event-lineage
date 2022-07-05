@@ -1,7 +1,7 @@
 /*
  * Copyright 2022 Confluent Inc.
  */
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
 import io.opentelemetry.sdk.testing.assertj.SpanDataAssert;
 import io.opentelemetry.sdk.testing.assertj.TraceAssert;
@@ -18,11 +18,11 @@ public class TraceAssertData implements Consumer<TraceAssert> {
         .hasSpansSatisfyingExactly(spanAsserts);
   }
 
-  static TraceAssertData trace() {
+  public static TraceAssertData trace() {
     return new TraceAssertData();
   }
 
-  TraceAssertData withSpans(Consumer<SpanDataAssert>... spanAssertions) {
+  public TraceAssertData withSpans(Consumer<SpanDataAssert>... spanAssertions) {
     this.spanAsserts = spanAssertions;
     return this;
   }

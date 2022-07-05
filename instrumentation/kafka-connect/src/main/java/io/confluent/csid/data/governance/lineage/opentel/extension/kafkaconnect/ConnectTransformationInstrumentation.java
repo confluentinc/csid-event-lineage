@@ -68,7 +68,8 @@ public class ConnectTransformationInstrumentation implements TypeInstrumentation
       //Create and start SMT span
       //Pass scope / span object to onExit through local - to close it on transformation completion.
       smtSpan = spanHandler().createAndStartSpan(
-          String.format(SpanNames.SMT_SPAN_NAME_FORMAT, transformation.getClass().getSimpleName()),
+          String.format(SpanNames.SMT_SPAN_NAME_FORMAT, SpanNames.SMT,
+              transformation.getClass().getSimpleName()),
           openTelemetryWrapper().currentContext());
       scope = smtSpan.makeCurrent();
     }

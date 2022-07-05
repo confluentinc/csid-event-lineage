@@ -35,11 +35,12 @@ public class Constants {
    */
   public class SpanNames {
 
+
+    public static final String SMT= "SMT";
     /**
      * Span name format - "SMT smt-name" - i.e. "SMT HeaderExtractor"
      */
-    public static final String SMT_SPAN_NAME_FORMAT = "SMT %s";
-
+    public static final String SMT_SPAN_NAME_FORMAT = "%s %s";
     /**
      * Span name format - "operation state-store-name" - i.e. "state-store-get
      * value-aggregate-store"

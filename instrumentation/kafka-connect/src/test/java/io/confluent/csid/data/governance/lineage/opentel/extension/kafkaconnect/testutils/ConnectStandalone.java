@@ -1,9 +1,9 @@
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
@@ -36,12 +36,13 @@ import org.apache.kafka.connect.util.FutureCallback;
  * </p>
  */
 @Slf4j
+@RequiredArgsConstructor
 public class ConnectStandalone {
-
   private Connect connect;
+  private final Properties workerProperties;
+  private final Properties connectorProperties;
 
-  //Properties array - 0 - WorkerProperties, 1+ - ConnectorX properties (i.e. 1 - connector1, 2-connector2 etc).
-  public void start(Properties... properties) {
+  public void start() {
 
     try {
       Time time = Time.SYSTEM;
@@ -50,7 +51,7 @@ public class ConnectStandalone {
       WorkerInfo initInfo = new WorkerInfo();
       initInfo.logAll();
 
-      Map<String, String> workerProps = Utils.propsToStringMap(properties[0]);
+      Map<String, String> workerProps = Utils.propsToStringMap(workerProperties);
       log.info("Scanning for plugin classes. This might take a moment ...");
       Plugins plugins = new Plugins(workerProps);
       plugins.compareAndSwapWithDelegatingLoader();
@@ -79,8 +80,7 @@ public class ConnectStandalone {
 
       try {
         connect.start();
-        for (final Properties connectorProperties : Arrays.copyOfRange(properties, 1,
-            properties.length)) {
+
           Map<String, String> connectorProps = Utils.propsToStringMap(connectorProperties);
           FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>(
               new Callback<Herder.Created<ConnectorInfo>>() {
@@ -97,7 +97,7 @@ public class ConnectStandalone {
               connectorProps.get(ConnectorConfig.NAME_CONFIG),
               connectorProps, false, cb);
           cb.get();
-        }
+
       } catch (Throwable t) {
         log.error("Stopping after connector error", t);
         connect.stop();

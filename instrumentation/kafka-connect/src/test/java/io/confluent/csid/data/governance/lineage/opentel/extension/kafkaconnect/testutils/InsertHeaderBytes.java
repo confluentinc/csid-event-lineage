@@ -1,4 +1,4 @@
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
 import static org.apache.kafka.common.config.ConfigDef.NO_DEFAULT_VALUE;
 

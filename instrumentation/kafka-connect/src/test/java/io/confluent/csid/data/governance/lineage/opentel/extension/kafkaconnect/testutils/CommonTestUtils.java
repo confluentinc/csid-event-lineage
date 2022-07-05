@@ -1,8 +1,10 @@
 /*
  * Copyright 2021 Confluent Inc.
  */
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
 import static java.util.Collections.singleton;
 import static org.awaitility.Awaitility.await;
 
@@ -74,14 +76,16 @@ public class CommonTestUtils {
   public Properties getSourceTaskProperties(Properties overrides, String topic) {
     Properties props = new Properties();
     props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSourceTask1");
-    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, "org.apache.kafka.connect.tools.VerifiableSourceConnector");
+    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG,
+        "org.apache.kafka.connect.tools.VerifiableSourceConnector");
     props.put(VerifiableSourceTask.TOPIC_CONFIG, topic);
     props.put(VerifiableSourceTask.THROUGHPUT_CONFIG, "1");
     props.put("transforms", "insertHeader");
     props.put("transforms.insertHeader.type",
-        "io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.InsertHeaderBytes");
-    props.put("transforms.insertHeader.header", "test_header");
-    props.put("transforms.insertHeader.value.literal", "test_value");
+        "io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.InsertHeaderBytes");
+    props.put("transforms.insertHeader.header", CAPTURED_PROPAGATED_HEADER.key());
+    props.put("transforms.insertHeader.value.literal",
+        new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8));
     props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
     return props;
   }
@@ -146,8 +150,8 @@ public class CommonTestUtils {
       overrides.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializerClass);
       KafkaConsumer consumer = new KafkaConsumer(getKafkaProperties(overrides));
       consumer.subscribe(singleton(topic));
-      await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofSeconds(1)).until(() -> {
-        ConsumerRecords records = consumer.poll(Duration.ofMillis(900));
+      await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(200)).until(() -> {
+        ConsumerRecords records = consumer.poll(Duration.ofMillis(200));
         Iterator<ConsumerRecord> recordIterator = records.iterator();
         while (recordIterator.hasNext()) {
           consumed.add(recordIterator.next());
@@ -173,7 +177,8 @@ public class CommonTestUtils {
     return consumeAtLeastXEvents(keyDeserializerClass, valueDeserializerClass, topic, 1).get(0);
   }
 
-  static void assertTracesCaptured(List<List<SpanData>> traces, TraceAssertData... expectations) {
+  public static void assertTracesCaptured(List<List<SpanData>> traces,
+      TraceAssertData... expectations) {
     TracesAssert.assertThat(traces).hasSize(expectations.length)
         .hasTracesSatisfyingExactly(expectations);
   }
