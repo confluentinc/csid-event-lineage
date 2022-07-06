@@ -48,7 +48,7 @@ public class CommonTestUtils {
 
   public void startKafkaContainer() {
     if (kafkaContainer == null) {
-      kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.0.1"))
+      kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.0.1"))
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS", "1")
