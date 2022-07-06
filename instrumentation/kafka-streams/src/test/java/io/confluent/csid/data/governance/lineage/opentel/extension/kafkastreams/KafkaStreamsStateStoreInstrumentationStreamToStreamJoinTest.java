@@ -53,9 +53,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 /**
  * Test for tracing propagation during KStream to KStream join operations that utilize StateStore
  * put and fetch.
- * <pre>
- * See {@link org.apache.kafka.streams.kstream.internals.KStreamKStreamJoin.KStreamKStreamJoinProcessor#process}
- * </pre>
+ *
+ * @see org.apache.kafka.streams.kstream.internals.KStreamKStreamJoin.KStreamKStreamJoinProcessor#process
  */
 public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
 
