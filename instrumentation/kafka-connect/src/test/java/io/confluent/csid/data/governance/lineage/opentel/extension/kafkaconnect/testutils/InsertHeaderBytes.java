@@ -1,3 +1,6 @@
+/*
+ * Copyright 2022 Confluent Inc.
+ */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
 import static org.apache.kafka.common.config.ConfigDef.NO_DEFAULT_VALUE;
@@ -12,6 +15,11 @@ import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
+/**
+ * Simple SMT that inserts hardcoded header into message - serialized as byte[].
+ *
+ * @param <R> - ConnectRecord subtype (i.e. SourceRecord or SinkRecord depending on connector used)
+ */
 public class InsertHeaderBytes<R extends ConnectRecord<R>> implements Transformation<R> {
 
   public static final String OVERVIEW_DOC =

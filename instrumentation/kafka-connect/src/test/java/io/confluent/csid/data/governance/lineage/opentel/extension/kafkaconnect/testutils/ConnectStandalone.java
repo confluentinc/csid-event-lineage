@@ -1,3 +1,6 @@
+/*
+ * Copyright 2022 Confluent Inc.
+ */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
 import java.net.URI;
@@ -26,9 +29,11 @@ import org.apache.kafka.connect.util.FutureCallback;
 
 /**
  * <p>
- * Command line utility that runs Kafka Connect as a standalone process. In this mode, work is not
- * distributed. Instead, all the normal Connect machinery works within a single process. This is
- * useful for ad hoc, small, or experimental jobs.
+ * Adapted for use in integration tests from Apache Kafka Connect Standalone CLI starter utility.
+ * <p>
+ * Runs Kafka Connect as a standalone process. In this mode, work is not distributed. Instead, all
+ * the normal Connect machinery works within a single process. This is useful for ad hoc, small, or
+ * experimental jobs.
  * </p>
  * <p>
  * By default, no job configs or offset data is persistent. You can make jobs persistent and fault

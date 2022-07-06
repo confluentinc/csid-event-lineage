@@ -1,3 +1,6 @@
+/*
+ * Copyright 2022 Confluent Inc.
+ */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
