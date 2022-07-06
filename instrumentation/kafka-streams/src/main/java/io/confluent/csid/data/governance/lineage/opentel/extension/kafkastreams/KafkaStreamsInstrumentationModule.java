@@ -60,7 +60,8 @@ public class KafkaStreamsInstrumentationModule extends InstrumentationModule {
         new TimestampedBytesStoreInstrumentation(),
         new SessionStoreBuilderInstrumentation(),
         new ValueAndTimestampDeserializerInstrumentation(),
-        new RecordConvertersInstrumentation());
+        new RecordConvertersInstrumentation(),
+        new StreamTaskInstrumentation());
   }
 
   @Override

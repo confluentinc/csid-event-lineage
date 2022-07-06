@@ -7,21 +7,20 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.StateStore;
+import org.apache.kafka.streams.processor.StateStoreContext;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.SessionStore;
-import org.apache.kafka.streams.state.internals.WrappedStateStore;
 
 /**
  * Tracing SessionStore - delegates calls to wrapped {@link SessionStore} adding tracing behaviour
  * where appropriate.
  */
 public class TracingSessionStore extends
-    WrappedStateStore<SessionStore<Bytes, byte[]>, Bytes, byte[]> implements
+    BaseTracingStore<SessionStore<Bytes, byte[]>> implements
     SessionStore<Bytes, byte[]> {
 
   private final StateStorePropagationHelpers stateStorePropagationHelpers;
   private final OpenTelemetryWrapper openTelemetryWrapper;
-  private ProcessorContext context;
 
   public TracingSessionStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
@@ -32,12 +31,22 @@ public class TracingSessionStore extends
   }
 
   @Override
+  public void init(ProcessorContext context, StateStore root) {
+    wrapped().init(context, root);
+  }
+
+  @Override
+  public void init(StateStoreContext context, StateStore root) {
+    wrapped().init(context, root);
+  }
+
+  @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> findSessions(Bytes key,
       long earliestSessionEndTime, long latestSessionStartTime) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().findSessions(key,
         earliestSessionEndTime, latestSessionStartTime);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), context);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
@@ -46,7 +55,7 @@ public class TracingSessionStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().findSessions(keyFrom, keyTo,
         earliestSessionEndTime, latestSessionStartTime);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), context);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
@@ -56,21 +65,21 @@ public class TracingSessionStore extends
       return null;
     }
     bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(wrapped().name(), bytesValue,
-        context.headers());
+        headersAccessor.get());
     return bytesValue;
   }
 
   @Override
   public void remove(Windowed<Bytes> sessionKey) {
     stateStorePropagationHelpers.handleStateStoreSessionRemoveSpan(wrapped().name(),
-        context.headers().toArray());
+        headersAccessor.get().toArray());
     wrapped().remove(sessionKey);
   }
 
   @Override
   public void put(Windowed<Bytes> sessionKey, byte[] aggregate) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
-        aggregate, context.headers().toArray());
+        aggregate, headersAccessor.get().toArray());
     wrapped().put(sessionKey, valueWithTrace);
   }
 
@@ -78,19 +87,13 @@ public class TracingSessionStore extends
   public KeyValueIterator<Windowed<Bytes>, byte[]> fetch(Bytes key) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetch(key);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), context);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> fetch(Bytes from, Bytes to) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetch(from, to);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), context);
-  }
-
-  @Override
-  public void init(ProcessorContext context, StateStore root) {
-    this.context = context;
-    wrapped().init(context, root);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 }

@@ -18,7 +18,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public class HeaderCapturingList<K, V> extends HeaderCapturingIterable<K, V> implements
     List<ConsumerRecord<K, V>> {
 
-  @Delegate
+  @Delegate(excludes = Iterable.class)
   private final List<ConsumerRecord<K, V>> delegate;
 
   public HeaderCapturingList(

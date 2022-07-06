@@ -3,8 +3,11 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
 
+import java.util.Optional;
 import lombok.Value;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 
 /**
  * Headers holder for capturing and propagating headers in Kafka Consumer / Producer.
@@ -16,14 +19,22 @@ import org.apache.kafka.common.header.Header;
 @Value
 public class HeadersHolder {
 
-  private static final ThreadLocal<Header[]> HEADERS_HOLDER = new ThreadLocal<>();
+  private static final ThreadLocal<Headers> HEADERS_HOLDER = new ThreadLocal<>();
 
-  public static void store(Header[] headers) {
+  public static void store(Headers headers) {
     HEADERS_HOLDER.set(headers);
   }
 
-  public static Header[] get() {
-    return HEADERS_HOLDER.get();
+  public static void store(Header[] headers) {
+    HEADERS_HOLDER.set(new RecordHeaders(headers));
+  }
+
+  /**
+   * Null safe headers' retrieval - removes the need for null checking in all downstream logic.
+   * @return Headers stored or empty Headers if none. Null-safe.
+   */
+  public static Headers get() {
+    return Optional.ofNullable(HEADERS_HOLDER.get()).orElse(new RecordHeaders());
   }
 
   public static void clear() {
