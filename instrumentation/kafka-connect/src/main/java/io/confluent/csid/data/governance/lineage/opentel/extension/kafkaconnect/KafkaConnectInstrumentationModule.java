@@ -21,7 +21,7 @@ import net.bytebuddy.matcher.ElementMatcher;
 @AutoService(InstrumentationModule.class)
 public final class KafkaConnectInstrumentationModule extends InstrumentationModule {
 
-  private final int INNER_ORDER_OF_EXECUTION = 10;
+  private final int ORDER_OF_EXECUTION = 10;
 
   public KafkaConnectInstrumentationModule() {
     super("kafka-connect-extension", "kafka-connect-2.6-extension");
@@ -35,7 +35,7 @@ public final class KafkaConnectInstrumentationModule extends InstrumentationModu
    */
   @Override
   public int order() {
-    return INNER_ORDER_OF_EXECUTION;
+    return ORDER_OF_EXECUTION;
   }
 
   @Override

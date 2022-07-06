@@ -19,9 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
 
 /**
- * Based on OpenTelemetry kafka-clients TracingIterator.
- * <p>
- * Creates a new Span and executes header capture logic on "next()" call.
+ * Wraps ConnectRecord iterator and executes span creation and header capture logic on "next()"
+ * call.
  */
 @Slf4j
 public class TracingIterator<T extends ConnectRecord<T>>
