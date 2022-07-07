@@ -9,6 +9,7 @@ apply from: "$rootDir/gradle/instrumentation.gradle"
 dependencies {
     implementation(project(":instrumentation:kafka-common"))
     compileOnly("org.apache.kafka:kafka-streams:${versions.kafka}")
+    compileOnly("org.slf4j:slf4j-api:${versions.slf4j}")
 
     implementation("com.fasterxml.jackson.core:jackson-databind:${versions.jackson}")
     implementation("com.fasterxml.jackson.core:jackson-core:${versions.jackson}")
@@ -46,6 +47,8 @@ test {
     jvmArgs("-Dotel.instrumentation.kafka.experimental-span-attributes=true")
     jvmArgs("-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true")
     jvmArgs("-Dio.opentelemetry.context.enableStrictContext=true")
+    jvmArgs("-Dotel.metrics.exporter=none")
+
 
 }
 

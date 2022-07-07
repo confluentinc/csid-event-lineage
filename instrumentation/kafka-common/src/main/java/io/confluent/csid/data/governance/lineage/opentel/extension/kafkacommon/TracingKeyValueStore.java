@@ -9,21 +9,19 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.StateStore;
+import org.apache.kafka.streams.processor.StateStoreContext;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
-import org.apache.kafka.streams.state.internals.WrappedStateStore;
 
 /**
  * Tracing KeyValueStoreWrapper - delegates calls to wrapped {@link KeyValueStore} adding tracing
  * behaviour where appropriate.
  */
-public class TracingKeyValueStore extends
-    WrappedStateStore<KeyValueStore<Bytes, byte[]>, Bytes, byte[]> implements
+public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, byte[]>> implements
     KeyValueStore<Bytes, byte[]> {
 
   private final StateStorePropagationHelpers stateStorePropagationHelpers;
   private final OpenTelemetryWrapper openTelemetryWrapper;
-  private ProcessorContext context;
 
   public TracingKeyValueStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
@@ -34,9 +32,19 @@ public class TracingKeyValueStore extends
   }
 
   @Override
+  public void init(ProcessorContext context, StateStore root) {
+    wrapped().init(context, root);
+  }
+
+  @Override
+  public void init(StateStoreContext context, StateStore root) {
+    wrapped().init(context, root);
+  }
+
+  @Override
   public void put(Bytes key, byte[] value) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
-        value, context.headers().toArray());
+        value, headersAccessor.get().toArray());
     wrapped().put(key, valueWithTrace);
   }
 
@@ -44,7 +52,7 @@ public class TracingKeyValueStore extends
   @Override
   public byte[] putIfAbsent(Bytes key, byte[] value) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
-        value, context.headers().toArray());
+        value, headersAccessor.get().toArray());
     return wrapped().putIfAbsent(key, valueWithTrace);
   }
 
@@ -54,7 +62,7 @@ public class TracingKeyValueStore extends
     for (KeyValue<Bytes, byte[]> entry : entries) {
       byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(
           wrapped().name(),
-          entry.value, context.headers().toArray());
+          entry.value, headersAccessor.get().toArray());
       tracedValueList.add(new KeyValue<>(entry.key, valueWithTrace));
     }
     wrapped().putAll(tracedValueList);
@@ -72,19 +80,13 @@ public class TracingKeyValueStore extends
   }
 
   @Override
-  public void init(ProcessorContext context, StateStore root) {
-    this.context = context;
-    wrapped().init(context, root);
-  }
-
-  @Override
   public byte[] get(Bytes key) {
     byte[] bytesValue = wrapped().get(key);
     if (null == bytesValue) {
       return null;
     }
     bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(wrapped().name(), bytesValue,
-        context.headers());
+        headersAccessor.get());
     return bytesValue;
   }
 
@@ -92,14 +94,14 @@ public class TracingKeyValueStore extends
   public KeyValueIterator<Bytes, byte[]> range(Bytes from, Bytes to) {
     KeyValueIterator<Bytes, byte[]> resultIter = wrapped().range(from, to);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), context);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Bytes, byte[]> all() {
     KeyValueIterator<Bytes, byte[]> resultIter = wrapped().all();
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), context);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override

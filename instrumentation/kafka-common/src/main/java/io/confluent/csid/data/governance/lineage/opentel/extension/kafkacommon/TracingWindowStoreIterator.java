@@ -3,7 +3,8 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
 
-import org.apache.kafka.streams.processor.ProcessorContext;
+import java.util.function.Supplier;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.WindowStoreIterator;
 
@@ -22,8 +23,8 @@ public class TracingWindowStoreIterator extends TracingKeyValueIterator<Long> im
 
   public TracingWindowStoreIterator(KeyValueIterator<Long, byte[]> wrapped,
       StateStorePropagationHelpers stateStorePropagationHelpers,
-      OpenTelemetryWrapper openTelemetryWrapper, String storeName, ProcessorContext context) {
-    super(wrapped, stateStorePropagationHelpers, openTelemetryWrapper, storeName, context);
+      OpenTelemetryWrapper openTelemetryWrapper, String storeName, Supplier<Headers> headersAccessor) {
+    super(wrapped, stateStorePropagationHelpers, openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override

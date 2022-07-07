@@ -3,6 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.headerCaptureConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.headersHandler;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.openTelemetryWrapper;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
@@ -28,10 +29,11 @@ import org.apache.kafka.common.header.Header;
  * propagation and capture.
  * <p>
  * Checks whether headers are captured for propagation in the ThreadLocal holder and adds them to
- * produced record using configured whitelist {@link HeaderCaptureConfiguration#getHeaderPropagationWhitelist()}
+ * produced record using configured whitelist
+ * {@link HeaderCaptureConfiguration#getHeaderPropagationWhitelist()}
  * <p>
- * Captures set of headers into Span attributes using configured whitelist {@link
- * HeaderCaptureConfiguration#getHeaderCaptureWhitelist()}
+ * Captures set of headers into Span attributes using configured whitelist
+ * {@link HeaderCaptureConfiguration#getHeaderCaptureWhitelist()}
  */
 public class ExtendedKafkaProducerInstrumentation implements TypeInstrumentation {
 
@@ -65,11 +67,17 @@ public class ExtendedKafkaProducerInstrumentation implements TypeInstrumentation
         @Advice.Argument(value = 0, readOnly = false) ProducerRecord<?, ?> producerRecord,
         @Advice.Argument(value = 1, readOnly = false) Callback callback) {
 
+      //Skip all the header processing for changelog send operations
+      if(producerRecord.topic().endsWith("-changelog")){
+        return;
+      }
       //If there are stored headers from Consumer - set them on record (not overwriting any that already set)
-      Header[] storedHeadersForPropagation = HeadersHolder.get();
-      if (storedHeadersForPropagation != null) {
+      Header[] storedHeadersForPropagation = HeadersHolder.get().toArray();
+      if (storedHeadersForPropagation.length > 0) {
+        Header[] headersToPropagate = headersHandler().filterHeaders(storedHeadersForPropagation,
+            headerCaptureConfiguration().getHeaderPropagationWhitelist());
         headersHandler().mergeHeaders(producerRecord.headers(),
-            storedHeadersForPropagation);
+            headersToPropagate);
       }
       //Capture headers configured for capture to span
       headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(

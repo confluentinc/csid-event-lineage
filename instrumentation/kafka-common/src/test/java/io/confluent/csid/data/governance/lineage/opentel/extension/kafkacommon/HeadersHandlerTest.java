@@ -28,6 +28,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.Test;
 
 class HeadersHandlerTest {
@@ -169,10 +170,9 @@ class HeadersHandlerTest {
 
     when(headerCaptureConfigurationMock.getHeaderPropagationWhitelist()).thenReturn(whitelist);
 
-    classUnderTest.storeHeadersForPropagation(headers);
-    assertThat(HeadersHolder.get()).containsExactly(
-        new RecordHeader("HeAdeR1", "v1".getBytes()),
-        new RecordHeader("header2", "v2".getBytes()));
+    classUnderTest.storeHeadersForPropagation(new RecordHeaders(headers));
+    assertThat(HeadersHolder.get().toArray()).containsExactly(
+        headers);
   }
 
   @Test
