@@ -17,6 +17,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for tracing propagation during Stream to KTable join operations that utilize StateStore
@@ -54,6 +56,9 @@ public class KafkaStreamsStateStoreInstrumentationKTableJoinTest {
 
   private KafkaStreams kafkaStreams;
 
+  @TempDir
+  File tempDir;
+
   @BeforeAll
   static void setupAll() {
     setupHeaderConfiguration();
@@ -66,7 +71,7 @@ public class KafkaStreamsStateStoreInstrumentationKTableJoinTest {
 
   @BeforeEach
   void setup() {
-    commonTestUtils = new CommonTestUtils();
+    commonTestUtils = new CommonTestUtils(tempDir);
     commonTestUtils.startKafkaContainer();
     inputTopic = "input-topic-" + UUID.randomUUID();
     ktableTopic = "ktable-topic-" + UUID.randomUUID();

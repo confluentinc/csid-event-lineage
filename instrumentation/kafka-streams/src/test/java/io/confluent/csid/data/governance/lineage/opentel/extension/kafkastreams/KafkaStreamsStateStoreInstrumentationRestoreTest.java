@@ -37,7 +37,6 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KafkaStreams.State;
 import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
@@ -49,6 +48,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -72,6 +72,9 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
 
   CountDownLatch streamsLatch;
 
+  @TempDir
+  File tempDir;
+
   @BeforeAll
   static void setupAll() {
     setupHeaderConfiguration();
@@ -84,7 +87,7 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
 
   @BeforeEach
   void setup(){
-    commonTestUtils = new CommonTestUtils();
+    commonTestUtils = new CommonTestUtils(tempDir);
     commonTestUtils.startKafkaContainer();
     inputTopic = "input-topic-" + UUID.randomUUID();
     outputTopic = "output-topic-" + UUID.randomUUID();
@@ -155,7 +158,7 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
 
     streamsLatch.countDown();
     commonTestUtils.awaitKStreamsShutdown(kafkaStreams);
-    cleanStateDir(streamsProperties);
+    tempDir.delete();
 
     streamsLatch = new CountDownLatch(1);
     KafkaStreams kafkaStreams2 = new KafkaStreams(streamsBuilder.build(), streamsProperties);
@@ -209,24 +212,5 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
 
     streamsLatch.countDown();
     commonTestUtils.awaitKStreamsShutdown(kafkaStreams2);
-    cleanStateDir(streamsProperties);
-
-  }
-
-  private void cleanStateDir(Properties streamsProps) {
-    String baseDir = System.getProperty("java.io.tmpdir") + "kafka-streams/";
-    File stateDir = new File(baseDir,
-        streamsProps.getProperty(StreamsConfig.APPLICATION_ID_CONFIG));
-    try {
-
-      if (stateDir.exists()) {
-        for (File file : stateDir.listFiles()) {
-          file.delete();
-        }
-        stateDir.delete();
-      }
-    } catch (Exception e) {
-      log.info("Failed to clean state dir {} after test", stateDir, e);
-    }
   }
 }

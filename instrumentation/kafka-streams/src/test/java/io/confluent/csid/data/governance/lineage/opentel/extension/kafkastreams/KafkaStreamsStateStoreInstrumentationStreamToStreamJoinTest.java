@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -50,6 +51,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Test for tracing propagation during KStream to KStream join operations that utilize StateStore
@@ -70,6 +72,9 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
 
   private CommonTestUtils commonTestUtils;
 
+  @TempDir
+  File tempDir;
+
   @BeforeAll
   static void setupAll() {
     setupHeaderConfiguration();
@@ -82,7 +87,7 @@ public class KafkaStreamsStateStoreInstrumentationStreamToStreamJoinTest {
 
   @BeforeEach
   void setup() {
-    commonTestUtils = new CommonTestUtils();
+    commonTestUtils = new CommonTestUtils(tempDir);
     commonTestUtils.startKafkaContainer();
     inputTopic = "input-topic-" + UUID.randomUUID();
     inputTopic2 = "input-topic2-" + UUID.randomUUID();

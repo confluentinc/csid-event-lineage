@@ -19,6 +19,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for tracing propagation during Stream aggregation operations that produce KTable and
@@ -63,6 +65,9 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
   private CountDownLatch streamsLatch = new CountDownLatch(1);
   private KafkaStreams kafkaStreams;
 
+  @TempDir
+  File tempDir;
+
   @BeforeAll
   static void setupAll() {
     setupHeaderConfiguration();
@@ -75,7 +80,7 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
 
   @BeforeEach
   void setup() {
-    commonTestUtils = new CommonTestUtils();
+    commonTestUtils = new CommonTestUtils(tempDir);
     commonTestUtils.startKafkaContainer();
     inputTopic = "input-topic-" + UUID.randomUUID();
     outputTopic = "output-topic-" + UUID.randomUUID();
