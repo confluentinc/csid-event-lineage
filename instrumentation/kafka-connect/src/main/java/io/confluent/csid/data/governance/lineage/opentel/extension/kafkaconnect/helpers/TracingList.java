@@ -4,11 +4,9 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers;
 
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Spliterator;
-import java.util.function.UnaryOperator;
+import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
 
@@ -23,6 +21,17 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 public class TracingList<T extends ConnectRecord<T>> extends TracingCollection<T> implements
     List<T> {
 
+  private interface DelegateExcludes {
+
+    ListIterator<?> listIterator();
+
+    ListIterator<?> listIterator(int index);
+
+    List<?> subList(int fromIndex, int toIndex);
+
+  }
+
+  @Delegate(excludes = {Collection.class, DelegateExcludes.class})
   private final List<T> delegate;
 
   /**
@@ -36,51 +45,6 @@ public class TracingList<T extends ConnectRecord<T>> extends TracingCollection<T
     this.delegate = delegate;
     log.trace("Creating TracingList spanName={}, delegate={}", spanName, delegate);
 
-  }
-
-  @Override
-  public boolean addAll(int index, Collection<? extends T> c) {
-    return delegate.addAll(index, c);
-  }
-
-  @Override
-  public void replaceAll(UnaryOperator<T> operator) {
-    List.super.replaceAll(operator);
-  }
-
-  @Override
-  public void sort(Comparator<? super T> c) {
-    List.super.sort(c);
-  }
-
-  @Override
-  public T get(int index) {
-    return delegate.get(index);
-  }
-
-  @Override
-  public T set(int index, T element) {
-    return delegate.set(index, element);
-  }
-
-  @Override
-  public void add(int index, T element) {
-    delegate.add(index, element);
-  }
-
-  @Override
-  public T remove(int index) {
-    return delegate.remove(index);
-  }
-
-  @Override
-  public int indexOf(Object o) {
-    return delegate.indexOf(o);
-  }
-
-  @Override
-  public int lastIndexOf(Object o) {
-    return delegate.lastIndexOf(o);
   }
 
   @Override
@@ -98,8 +62,4 @@ public class TracingList<T extends ConnectRecord<T>> extends TracingCollection<T
     return new TracingList<>(delegate.subList(fromIndex, toIndex), spanName);
   }
 
-  @Override
-  public Spliterator<T> spliterator() {
-    return List.super.spliterator();
-  }
 }

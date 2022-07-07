@@ -10,6 +10,7 @@ import static org.awaitility.Awaitility.await;
 
 import io.opentelemetry.sdk.testing.assertj.TracesAssert;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -32,16 +34,24 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+import org.apache.kafka.connect.tools.VerifiableSinkConnector;
 import org.apache.kafka.connect.tools.VerifiableSinkTask;
+import org.apache.kafka.connect.tools.VerifiableSourceConnector;
 import org.apache.kafka.connect.tools.VerifiableSourceTask;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
+@RequiredArgsConstructor
 public class CommonTestUtils {
+
+  private static final String CONNECT_TEMP_FILE = "connect_temp_file";
+
+  private final File tempDir;
 
   private String kafkaBootstrapServers = "dummy";
   private KafkaContainer kafkaContainer;
@@ -64,21 +74,20 @@ public class CommonTestUtils {
     }
   }
 
-  public Properties getConnectWorkerProperties(Properties overrides) {
+  public Properties getConnectWorkerProperties() {
     Properties props = new Properties();
     props.put(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers);
-    props.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, "JsonConverter");
-    props.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, "JsonConverter");
-    props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, "/tmp/connect");
-    props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
+    props.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+    props.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+    props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
+        createTempFile(tempDir).getAbsolutePath());
     return props;
   }
 
   public Properties getSourceTaskProperties(Properties overrides, String topic) {
     Properties props = new Properties();
     props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSourceTask1");
-    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG,
-        "org.apache.kafka.connect.tools.VerifiableSourceConnector");
+    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, VerifiableSourceConnector.class.getName());
     props.put(VerifiableSourceTask.TOPIC_CONFIG, topic);
     props.put(VerifiableSourceTask.THROUGHPUT_CONFIG, "1");
 
@@ -89,8 +98,7 @@ public class CommonTestUtils {
   public Properties getSinkTaskProperties(Properties overrides, String topic) {
     Properties props = new Properties();
     props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSinkTask1");
-    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG,
-        "org.apache.kafka.connect.tools.VerifiableSinkConnector");
+    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, VerifiableSinkConnector.class.getName());
     props.put(VerifiableSinkTask.TOPICS_CONFIG, topic);
 
     props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
@@ -101,8 +109,7 @@ public class CommonTestUtils {
     Properties props = new Properties();
 
     props.put("transforms", "insertHeader");
-    props.put("transforms.insertHeader.type",
-        "io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.InsertHeaderBytes");
+    props.put("transforms.insertHeader.type", InsertHeaderBytes.class.getName());
     props.put("transforms.insertHeader.header", CAPTURED_PROPAGATED_HEADER.key());
     props.put("transforms.insertHeader.value.literal",
         new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8));
@@ -200,5 +207,9 @@ public class CommonTestUtils {
       TraceAssertData... expectations) {
     TracesAssert.assertThat(traces).hasSize(expectations.length)
         .hasTracesSatisfyingExactly(expectations);
+  }
+
+  public File createTempFile(File tempDir) {
+    return new File(tempDir, CONNECT_TEMP_FILE);
   }
 }

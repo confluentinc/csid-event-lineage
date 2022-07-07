@@ -13,6 +13,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 public class SourceTaskTracingTest {
 
@@ -32,10 +34,13 @@ public class SourceTaskTracingTest {
   private String testTopic;
   CommonTestUtils commonTestUtils;
 
+  @TempDir
+  File tempDir;
+
   @BeforeEach
   void setup() {
     testTopic = "test-topic-" + UUID.randomUUID();
-    commonTestUtils = new CommonTestUtils();
+    commonTestUtils = new CommonTestUtils(tempDir);
     commonTestUtils.startKafkaContainer();
   }
 
@@ -49,7 +54,7 @@ public class SourceTaskTracingTest {
   @Test
   void testSourceTask() {
     ConnectStandalone connectStandalone = new ConnectStandalone(
-        commonTestUtils.getConnectWorkerProperties(null),
+        commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSourceTaskProperties(null, testTopic));
     CountDownLatch connectLatch = new CountDownLatch(1);
     new Thread(() -> {

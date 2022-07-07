@@ -5,6 +5,7 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect
 
 import java.util.Collection;
 import java.util.Iterator;
+import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
 
@@ -17,6 +18,7 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 @Slf4j
 public class TracingCollection<T extends ConnectRecord<T>> implements Collection<T> {
 
+  @Delegate(excludes = Iterable.class)
   private final Collection<T> delegate;
   protected final String spanName;
 
@@ -25,69 +27,8 @@ public class TracingCollection<T extends ConnectRecord<T>> implements Collection
     this.delegate = delegate;
     log.trace("Creating TracingCollection spanName={}, delegate={}", spanName, delegate);
   }
-
-  @Override
-  public int size() {
-    return delegate.size();
-  }
-
-  @Override
-  public boolean isEmpty() {
-    return delegate.isEmpty();
-  }
-
-  @Override
-  public boolean contains(Object o) {
-    return delegate.contains(o);
-  }
-
   @Override
   public Iterator<T> iterator() {
     return new TracingIterator<>(delegate.iterator(), spanName);
-  }
-
-  @Override
-  public Object[] toArray() {
-    return delegate.toArray();
-  }
-
-  @Override
-  public <T> T[] toArray(T[] a) {
-    return delegate.toArray(a);
-  }
-
-  @Override
-  public boolean add(T record) {
-    return delegate.add(record);
-  }
-
-  @Override
-  public boolean remove(Object o) {
-    return delegate.remove(o);
-  }
-
-  @Override
-  public boolean containsAll(Collection<?> c) {
-    return delegate.containsAll(c);
-  }
-
-  @Override
-  public boolean addAll(Collection<? extends T> c) {
-    return delegate.addAll(c);
-  }
-
-  @Override
-  public boolean removeAll(Collection<?> c) {
-    return delegate.removeAll(c);
-  }
-
-  @Override
-  public boolean retainAll(Collection<?> c) {
-    return delegate.retainAll(c);
-  }
-
-  @Override
-  public void clear() {
-    delegate.clear();
   }
 }

@@ -3,7 +3,9 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers;
 
+import java.util.Iterator;
 import java.util.ListIterator;
+import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
 
@@ -15,6 +17,14 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 public class TracingListIterator<T extends ConnectRecord<T>> extends TracingIterator<T>
     implements ListIterator<T> {
 
+  private interface DelegateExcludes {
+
+    <T extends ConnectRecord<T>> T previous();
+
+    boolean hasPrevious();
+  }
+
+  @Delegate(excludes = {DelegateExcludes.class, Iterator.class})
   private final ListIterator<T> delegateIterator;
 
   public TracingListIterator(
@@ -39,23 +49,4 @@ public class TracingListIterator<T extends ConnectRecord<T>> extends TracingIter
     return record;
   }
 
-  @Override
-  public int nextIndex() {
-    return delegateIterator.nextIndex();
-  }
-
-  @Override
-  public int previousIndex() {
-    return delegateIterator.previousIndex();
-  }
-
-  @Override
-  public void set(T t) {
-    delegateIterator.set(t);
-  }
-
-  @Override
-  public void add(T t) {
-    delegateIterator.add(t);
-  }
 }

@@ -14,6 +14,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 public class SmtTracingTest {
 
@@ -38,6 +40,8 @@ public class SmtTracingTest {
   private final Charset charset = StandardCharsets.UTF_8;
   private final String transformClassName = "InsertHeaderBytes";
   CommonTestUtils commonTestUtils;
+  @TempDir
+  File tempDir;
 
   @BeforeAll
   public static void setupAll() {
@@ -47,7 +51,7 @@ public class SmtTracingTest {
   @BeforeEach
   void setup() {
     testTopic = "test-topic-" + UUID.randomUUID();
-    commonTestUtils = new CommonTestUtils();
+    commonTestUtils = new CommonTestUtils(tempDir);
     commonTestUtils.startKafkaContainer();
   }
 
@@ -65,8 +69,9 @@ public class SmtTracingTest {
   @SneakyThrows
   @Test
   void testSMTCaptureWithHeaderCapture() {
+
     ConnectStandalone connectStandalone = new ConnectStandalone(
-        commonTestUtils.getConnectWorkerProperties(null),
+        commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSourceTaskProperties(
             commonTestUtils.getHeaderInjectTrasnformProperties(), testTopic));
     CountDownLatch connectLatch = new CountDownLatch(1);

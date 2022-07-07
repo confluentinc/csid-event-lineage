@@ -17,6 +17,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 public class SinkTaskTracingTest {
 
@@ -41,6 +43,9 @@ public class SinkTaskTracingTest {
   private final Charset charset = StandardCharsets.UTF_8;
   CommonTestUtils commonTestUtils;
 
+  @TempDir
+  File tempDir;
+
   @BeforeAll
   public static void setupAll() {
     setupHeaderConfiguration();
@@ -49,7 +54,7 @@ public class SinkTaskTracingTest {
   @BeforeEach
   void setup() {
     testTopic = "test-topic-" + UUID.randomUUID();
-    commonTestUtils = new CommonTestUtils();
+    commonTestUtils = new CommonTestUtils(tempDir);
     commonTestUtils.startKafkaContainer();
   }
 
@@ -68,7 +73,7 @@ public class SinkTaskTracingTest {
   @Test
   void testSinkTaskCaptureWithHeaderPropagationAndCapture() {
     ConnectStandalone connectStandalone = new ConnectStandalone(
-        commonTestUtils.getConnectWorkerProperties(null),
+        commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSinkTaskProperties(null, testTopic));
     CountDownLatch connectLatch = new CountDownLatch(1);
     new Thread(() -> {
