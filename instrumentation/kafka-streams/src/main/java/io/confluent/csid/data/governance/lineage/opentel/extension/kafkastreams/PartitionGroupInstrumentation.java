@@ -57,11 +57,13 @@ public class PartitionGroupInstrumentation implements TypeInstrumentation {
 
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(@Advice.Return StampedRecord record) {
-      if (record == null) {
-        return;
+      if (record != null) {
+        headersHandler().storeHeadersForPropagation(record.headers());
+        headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
+            record.headers().toArray());
+      } else {
+        HeadersHolder.clear();
       }
-      headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
-          record.headers().toArray());
     }
   }
 }

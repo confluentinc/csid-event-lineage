@@ -67,14 +67,14 @@ subprojects {
                 jackson                    : "2.12.3",
                 jsonFlattener              : "0.12.0",
                 jsonBase                   : "2.0.0",
-                kafka                      : "2.6.0",
+                kafka                      : "2.7.0",
                 testContainersKafka        : "1.16.2",
                 assertj                    : "3.19.0",
                 awaitility                 : "4.1.1",
                 lombok                     : "1.18.22",
                 logback                    : "1.2.3",
-                slf4j                      : "1.7.30",
-                apacheCommons3             : "3.12.0"
+                apacheCommons3             : "3.12.0",
+                slf4j                      : "1.7.36"
         ]
 
         deps = [

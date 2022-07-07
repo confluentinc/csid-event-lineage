@@ -5,8 +5,9 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
+import java.util.function.Supplier;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueIterator;
 
 /**
@@ -26,16 +27,16 @@ public class TracingKeyValueIterator<K> implements KeyValueIterator<K, byte[]> {
   protected final StateStorePropagationHelpers stateStorePropagationHelpers;
   protected final OpenTelemetryWrapper openTelemetryWrapper;
   protected final String storeName;
-  protected final ProcessorContext context;
+  protected final Supplier<Headers> headersAccessor;
 
   protected TracingKeyValueIterator(KeyValueIterator<K, byte[]> wrapped,
       StateStorePropagationHelpers stateStorePropagationHelpers,
-      OpenTelemetryWrapper openTelemetryWrapper, String storeName, ProcessorContext context) {
+      OpenTelemetryWrapper openTelemetryWrapper, String storeName, Supplier<Headers> headersAccessor) {
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;
     this.wrapped = wrapped;
     this.storeName = storeName;
-    this.context = context;
+    this.headersAccessor = headersAccessor;
   }
 
   @Override
@@ -61,7 +62,7 @@ public class TracingKeyValueIterator<K> implements KeyValueIterator<K, byte[]> {
       return keyValue;
     }
     bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(storeName, bytesValue,
-        context.headers());
+        headersAccessor.get());
     return new KeyValue<>(keyValue.key, bytesValue);
   }
 }
