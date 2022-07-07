@@ -4,12 +4,16 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.headersHandler;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.spanHandler;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHolder;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceMetadata;
 import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessTracing;
 import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessWrapper;
 import io.opentelemetry.javaagent.instrumentation.kafkaclients.TracingIterator;
 import java.util.Iterator;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
@@ -17,17 +21,12 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * <p>
  * Wraps ConsumerRecord iterator and executes header capture logic on "next()" call.
  */
-public class HeaderCapturingIterator<K, V>
-    implements Iterator<ConsumerRecord<K, V>>,
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class HeaderCapturingIterator<K, V> implements Iterator<ConsumerRecord<K, V>>,
     KafkaClientsConsumerProcessWrapper<Iterator<ConsumerRecord<K, V>>> {
 
   private final Iterator<ConsumerRecord<K, V>> delegateIterator;
-
-  private HeaderCapturingIterator(
-      Iterator<ConsumerRecord<K, V>> delegateIterator) {
-    this.delegateIterator = delegateIterator;
-
-  }
+  private final ServiceMetadata serviceMetadata;
 
   /**
    * Wraps iterator with {@link HeaderCapturingIterator} if
@@ -38,10 +37,10 @@ public class HeaderCapturingIterator<K, V>
    * @param <V>      ConsumerRecord Value type
    * @return {@link HeaderCapturingIterator}
    */
-  public static <K, V> Iterator<ConsumerRecord<K, V>> wrap(
-      Iterator<ConsumerRecord<K, V>> delegate) {
+  public static <K, V> Iterator<ConsumerRecord<K, V>> wrap(Iterator<ConsumerRecord<K, V>> delegate,
+      ServiceMetadata serviceMetadata) {
     if (KafkaClientsConsumerProcessTracing.wrappingEnabled()) {
-      return new HeaderCapturingIterator<>(delegate);
+      return new HeaderCapturingIterator<>(delegate, serviceMetadata);
     }
     return delegate;
   }
@@ -53,11 +52,13 @@ public class HeaderCapturingIterator<K, V>
 
   /**
    * In addition to returning next ConsumerRecord (if present) - store configured headers in
-   * {@link HeadersHolder} for automatic propagation on produce.
+   * {@link HeadersHolder} for automatic propagation on produce and capture service metadata.
    * <p>
    * Capture header key/values as Span attributes according to configured whitelist. Headers are
    * captured according to configuration as is (as byte[] values) and recorded to the consume span
    * assuming string values.
+   * <p>
+   * Capture service name and cluster id to span as attributes
    *
    * @return next ConsumerRecord
    */
@@ -68,12 +69,12 @@ public class HeaderCapturingIterator<K, V>
       headersHandler().storeHeadersForPropagation(record.headers());
       headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
           record.headers().toArray());
+      spanHandler().captureServiceMetadataToSpan(serviceMetadata);
     } else {
       HeadersHolder.clear();
     }
     return record;
   }
-
 
   @Override
   public void remove() {

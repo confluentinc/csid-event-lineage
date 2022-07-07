@@ -11,6 +11,8 @@ dependencies {
     compileOnly("org.apache.kafka:connect-api:${versions.kafka}")
     compileOnly("org.apache.kafka:connect-runtime:${versions.kafka}")
 
+    compileOnly("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi:${versions.opentelemetry}")
+
     implementation("com.fasterxml.jackson.core:jackson-databind:${versions.jackson}")
     implementation("com.fasterxml.jackson.core:jackson-core:${versions.jackson}")
     implementation("com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}")

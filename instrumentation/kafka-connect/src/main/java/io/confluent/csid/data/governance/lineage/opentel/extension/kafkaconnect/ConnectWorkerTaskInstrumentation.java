@@ -9,31 +9,26 @@ import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceNameHolder;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.TracingCollection;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
-import java.util.Collection;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.apache.kafka.connect.sink.SinkTask;
+import org.apache.kafka.connect.util.ConnectorTaskId;
 
 /**
- * Kafka Connect Sink Task instrumentation wraps ConnectRecord collection with
- * {@link TracingCollection} on {@link SinkTask#put(Collection)} method to inject tracing capability
- * for SinkTask execution.
+ * Kafka Connect Worker Task instrumentation adds
+ * {@link org.apache.kafka.connect.runtime.WorkerTask#execute} advice that stores connector details
+ * into ThreadLocal {@link ServiceNameHolder} for later use as Service name in spans.
  * <p>
- * As the ConnectRecord collection is traversed during task execution - tracing logic in
- * TracingIterator is invoked and "sinkTask-process" Spans are recorded and headers captured.
+ * Clears the ThreadLocal {@link ServiceNameHolder} on execute method exit.
  */
-public class ConnectSinkTaskInstrumentation implements TypeInstrumentation {
+public class ConnectWorkerTaskInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
-    return hasSuperClass(named("org.apache.kafka.connect.sink.SinkTask"));
+    return hasSuperClass(named("org.apache.kafka.connect.runtime.WorkerTask"));
   }
 
   /**
@@ -46,20 +41,24 @@ public class ConnectSinkTaskInstrumentation implements TypeInstrumentation {
     transformer.applyAdviceToMethod(
         isMethod()
             .and(isPublic())
-            .and(named("put"))
-            .and(takesArguments(1)),
-        ConnectSinkTaskInstrumentation.class.getName()
-            + "$SinkTaskPutAdvice");
+            .and(named("execute"))
+            .and(takesArguments(0)),
+        ConnectWorkerTaskInstrumentation.class.getName()
+            + "$ExecuteAdvice");
   }
 
   @SuppressWarnings("unused")
-  public static class SinkTaskPutAdvice {
+  public static class ExecuteAdvice {
 
     @Advice.OnMethodEnter(suppress = Throwable.class)
     public static void onEnter(
-        @Advice.Argument(value = 0, readOnly = false) Collection<SinkRecord> sinkRecords) {
-      sinkRecords = new TracingCollection<>(sinkRecords, SpanNames.SINK_TASK,
-          ServiceNameHolder.get());
+        @Advice.FieldValue(value = "id") ConnectorTaskId connectorTaskId) {
+      ServiceNameHolder.store(connectorTaskId.connector());
+    }
+
+    @Advice.OnMethodExit(suppress = Throwable.class)
+    public static void onExit() {
+      ServiceNameHolder.clear();
     }
   }
 }

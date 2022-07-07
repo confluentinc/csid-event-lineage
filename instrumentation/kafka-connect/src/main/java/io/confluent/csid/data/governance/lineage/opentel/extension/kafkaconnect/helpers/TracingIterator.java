@@ -28,6 +28,7 @@ public class TracingIterator<T extends ConnectRecord<T>>
 
   private final Iterator<T> delegateIterator;
   private final String spanName;
+  private final String connectorId;
   private Scope currentScope;
   private Span currentSpan;
 
@@ -37,11 +38,12 @@ public class TracingIterator<T extends ConnectRecord<T>>
    * @param delegateIterator iterator to wrap
    * @param spanName         Span name for creating new spans on next() call.
    */
-  public TracingIterator(
-      Iterator<T> delegateIterator, String spanName) {
+  public TracingIterator(Iterator<T> delegateIterator, String spanName, String connectorId) {
     this.spanName = spanName;
     this.delegateIterator = delegateIterator;
-    log.trace("Creating TracingIterator spanName={}, delegate={}", spanName, delegateIterator);
+    this.connectorId = connectorId;
+    log.trace("Creating TracingIterator spanName={}, delegate={}, connectorId={}", spanName,
+        delegateIterator, connectorId);
   }
 
   @Override
@@ -51,14 +53,17 @@ public class TracingIterator<T extends ConnectRecord<T>>
   }
 
   /**
-   * In addition to returning next traced record (if present) - creates a new span and capture
-   * headers as span attributes.
+   * In addition to returning next traced record (if present) - creates a new span, captures headers
+   * and connectorId as span attributes
    * <p>
    * Create a new span - named using SpanName set at wrapping.
    * <p>
    * Capture header key/values as Span attributes according to configured whitelist. Headers are
    * captured according to configuration as is (as byte[] values) and recorded to the span assuming
    * string values.
+   * <p>
+   * Capture connectorId to allow to override operation name in Resource attributes for the span by
+   * {@link DelegatingSpanExporter}
    *
    * @return next ConnectRecord in collection.
    */
@@ -89,6 +94,7 @@ public class TracingIterator<T extends ConnectRecord<T>>
           spanName);
       currentSpan = spanHandler().createAndStartSpan(topicSpanName, parentContext);
       currentScope = currentSpan.makeCurrent();
+      openTelemetryWrapper().currentSpan().setAttribute(Constants.SERVICE_NAME_KEY, connectorId);
       connectHandler().captureConnectHeadersToCurrentSpan(record.headers(),
           headerCaptureConfiguration().getHeaderValueEncoding());
       log.trace("Created Span in iterator.next, parentTrace={}",

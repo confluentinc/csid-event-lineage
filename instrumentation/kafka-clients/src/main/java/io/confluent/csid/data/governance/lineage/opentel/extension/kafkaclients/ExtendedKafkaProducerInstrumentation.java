@@ -85,7 +85,7 @@ public class ExtendedKafkaProducerInstrumentation implements TypeInstrumentation
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
-    public static void checkForError(@Advice.Thrown Throwable throwable) {
+    public static void onExit(@Advice.Thrown Throwable throwable) {
       if (throwable != null) {
         openTelemetryWrapper().currentSpan()
             .setAttribute(AttributeKey.stringKey("exception"), throwable.toString());

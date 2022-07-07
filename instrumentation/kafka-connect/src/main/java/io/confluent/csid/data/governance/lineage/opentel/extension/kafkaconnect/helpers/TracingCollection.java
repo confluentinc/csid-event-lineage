@@ -21,14 +21,18 @@ public class TracingCollection<T extends ConnectRecord<T>> implements Collection
   @Delegate(excludes = Iterable.class)
   private final Collection<T> delegate;
   protected final String spanName;
+  protected final String connectorId;
 
-  public TracingCollection(Collection<T> delegate, String spanName) {
+  public TracingCollection(Collection<T> delegate, String spanName, String connectorId) {
     this.spanName = spanName;
     this.delegate = delegate;
-    log.trace("Creating TracingCollection spanName={}, delegate={}", spanName, delegate);
+    this.connectorId = connectorId;
+    log.trace("Creating TracingCollection spanName={}, delegate={}, connectorId={}", spanName,
+        delegate, connectorId);
   }
+
   @Override
   public Iterator<T> iterator() {
-    return new TracingIterator<>(delegate.iterator(), spanName);
+    return new TracingIterator<>(delegate.iterator(), spanName, connectorId);
   }
 }

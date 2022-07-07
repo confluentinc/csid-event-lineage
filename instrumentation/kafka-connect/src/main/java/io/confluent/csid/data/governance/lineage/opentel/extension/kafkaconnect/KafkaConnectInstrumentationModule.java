@@ -48,7 +48,8 @@ public final class KafkaConnectInstrumentationModule extends InstrumentationModu
     return asList(
         new ConnectTransformationInstrumentation(),
         new ConnectSinkTaskInstrumentation(),
-        new ConnectWorkerSourceTaskInstrumentation()
+        new ConnectWorkerSourceTaskInstrumentation(),
+        new ConnectWorkerTaskInstrumentation()
     );
   }
 

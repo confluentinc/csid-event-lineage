@@ -3,9 +3,11 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeaderCaptureConfiguration;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHandler;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.SpanHandler;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -21,6 +23,9 @@ public class Singletons {
   private static HeadersHandler HEADERS_HANDLER = new HeadersHandler(openTelemetryWrapper(),
       headerCaptureConfiguration());
 
+  private static final SpanHandler SPAN_HANDLER = new SpanHandler(openTelemetryWrapper(),
+      Constants.INSTRUMENTATION_NAME_KAFKA_CLIENTS);
+
   public static OpenTelemetryWrapper openTelemetryWrapper() {
     return OPEN_TELEMETRY_WRAPPER;
   }
@@ -31,6 +36,10 @@ public class Singletons {
 
   public static HeaderCaptureConfiguration headerCaptureConfiguration() {
     return HEADER_CAPTURE_CONFIGURATION;
+  }
+
+  public static SpanHandler spanHandler() {
+    return SPAN_HANDLER;
   }
 
   /**

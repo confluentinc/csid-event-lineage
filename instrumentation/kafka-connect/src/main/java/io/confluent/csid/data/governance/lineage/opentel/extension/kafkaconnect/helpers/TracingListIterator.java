@@ -10,8 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
 
 /**
- * Extends TracingIterator - Wraps ConnectRecord iterator and executes span creation and header
- * capture logic on next() / previous() calls.
+ * Extends TracingIterator - Wraps ConnectRecord iterator and executes span creation, connectorId
+ * and header capture logic on next() / previous() calls.
  */
 @Slf4j
 public class TracingListIterator<T extends ConnectRecord<T>> extends TracingIterator<T>
@@ -28,10 +28,11 @@ public class TracingListIterator<T extends ConnectRecord<T>> extends TracingIter
   private final ListIterator<T> delegateIterator;
 
   public TracingListIterator(
-      ListIterator<T> delegateIterator, String spanName) {
-    super(delegateIterator, spanName);
+      ListIterator<T> delegateIterator, String spanName, String connectorId) {
+    super(delegateIterator, spanName, connectorId);
     this.delegateIterator = delegateIterator;
-    log.trace("Creating TracingListIterator spanName={}, delegate={}", spanName, delegateIterator);
+    log.trace("Creating TracingListIterator spanName={}, delegate={}, connectorId={}", spanName,
+        delegateIterator, connectorId);
   }
 
 

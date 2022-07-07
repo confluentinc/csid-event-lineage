@@ -24,6 +24,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -36,6 +37,7 @@ public class CommonTestUtils {
   private String kafkaBootsrapServers;
   private KafkaContainer kafkaContainer;
   private KafkaProducer<String, String> kafkaProducer;
+  private Properties additionalProperties = new Properties();
 
   public CommonTestUtils() {
   }
@@ -60,6 +62,10 @@ public class CommonTestUtils {
     }
   }
 
+  public void updateAdditionalProperties(Consumer<Properties> updates) {
+    updates.accept(additionalProperties);
+  }
+
   public Properties getKafkaProperties() {
     Properties props = new Properties();
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -72,6 +78,7 @@ public class CommonTestUtils {
     props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-consumer-group-" + UUID.randomUUID());
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     props.put(ConsumerConfig.CLIENT_ID_CONFIG, "test-consumer-" + UUID.randomUUID());
+    props.putAll(additionalProperties);
     return props;
   }
 
@@ -115,6 +122,28 @@ public class CommonTestUtils {
     log.info("Consumed Records: {}", consumed);
   }
 
+  //TODO: Refactor to have test with iteration over List and over Iterable.
+  public void consumeEventsAsList(String topic, int numberToConsume,
+      Consumer<ConsumerRecord<String, String>> consumedRecordProcessFunc) {
+    List<ConsumerRecord<String, String>> consumed = new ArrayList<>();
+
+    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(getKafkaProperties());
+    consumer.subscribe(singleton(topic));
+    await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofSeconds(1)).until(() -> {
+      ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(900));
+      // Noop - need to iterate through received records to kick off Process span
+      // and capture consumed records for assertions
+      List<ConsumerRecord<String, String>> list = records.records(new TopicPartition(topic, 0));
+      for (ConsumerRecord<String, String> record : list) {
+        consumed.add(record);
+        if (consumedRecordProcessFunc != null) {
+          consumedRecordProcessFunc.accept(record);
+        }
+      }
+      return consumed.size() == numberToConsume;
+    });
+    log.info("Consumed Records: {}", consumed);
+  }
   static void assertTracesCaptured(List<List<SpanData>> traces, TraceAssertData... expectations) {
     TracesAssert.assertThat(traces).hasSize(expectations.length)
         .hasTracesSatisfyingExactly(expectations);

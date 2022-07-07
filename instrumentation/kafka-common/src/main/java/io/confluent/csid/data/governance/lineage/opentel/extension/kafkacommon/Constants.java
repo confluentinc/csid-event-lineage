@@ -3,6 +3,9 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
 
+import static io.opentelemetry.api.common.AttributeKey.stringKey;
+
+import io.opentelemetry.api.common.AttributeKey;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -29,6 +32,9 @@ public class Constants {
    * Timestamp (long) value length in bytes
    */
   public static final int TIMESTAMP_LENGTH = Long.BYTES;
+
+  public static final AttributeKey<String> SERVICE_NAME_KEY = stringKey("service.name");
+  public static final AttributeKey<String> CLUSTER_ID_KEY = stringKey("cluster.id");
 
   /**
    * Constants for building span names

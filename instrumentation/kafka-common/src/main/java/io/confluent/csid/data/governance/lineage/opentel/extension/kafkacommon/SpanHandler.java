@@ -45,4 +45,17 @@ public class SpanHandler {
     }
     return spanBuilder.startSpan();
   }
+
+  public void captureServiceMetadataToSpan(ServiceMetadata serviceMetadata) {
+    if (serviceMetadata.getServiceName() != null) {
+      setServiceNameToSpan(serviceMetadata.getServiceName());
+    }
+  }
+
+  private void setServiceNameToSpan(String serviceName) {
+    if (serviceName != null && serviceName.length() > 0) {
+      openTelemetryWrapper.currentSpan().setAttribute(Constants.SERVICE_NAME_KEY, serviceName);
+    }
+  }
+
 }
