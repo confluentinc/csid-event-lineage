@@ -85,6 +85,7 @@ public class CommonTestUtils {
     props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
     return props;
   }
+
   public Properties getSinkTaskProperties(Properties overrides, String topic) {
     Properties props = new Properties();
     props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSinkTask1");
@@ -96,7 +97,7 @@ public class CommonTestUtils {
     return props;
   }
 
-  public Properties getHeaderInjectTrasnformProperties(){
+  public Properties getHeaderInjectTrasnformProperties() {
     Properties props = new Properties();
 
     props.put("transforms", "insertHeader");

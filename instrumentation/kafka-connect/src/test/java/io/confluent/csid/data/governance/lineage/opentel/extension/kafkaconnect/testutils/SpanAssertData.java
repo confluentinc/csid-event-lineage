@@ -75,6 +75,7 @@ public class SpanAssertData implements Consumer<SpanDataAssert> {
             .satisfies(spanData -> assertThat(spanData.getName()).contains(SpanNames.SINK_TASK));
     return spanAssertData;
   }
+
   public static SpanAssertData stateStorePut() {
     SpanAssertData spanAssertData = new SpanAssertData();
     spanAssertData.assertions = spanAssert ->

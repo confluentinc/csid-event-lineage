@@ -8,12 +8,13 @@ import java.util.Iterator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
 
-@Slf4j
 /**
- * Wrapper class providing iterator with tracing for ConnectRecord classes - used in instrumenting Connect sink / source tasks
- * as consumer records are first converted to internal connect records as a batch and only then
- * iterated - hence breaking span scope from initial consumer records iteration.
+ * Wrapper class providing iterator with tracing for ConnectRecord classes - used in instrumenting
+ * Connect sink / source tasks as consumer records are first converted to internal connect records
+ * as a batch and only then iterated - hence breaking span scope from initial consumer records
+ * iteration.
  */
+@Slf4j
 public class TracingCollection<T extends ConnectRecord<T>> implements Collection<T> {
 
   private final Collection<T> delegate;

@@ -40,7 +40,8 @@ public class Constants {
     public static final String SINK_TASK = "sink-task";
 
     /**
-     * Span name format - "topic source-task"  "topic sink-task" - i.e. "OutputTopic-123 source-task"
+     * Span name format - "topic source-task"  "topic sink-task" - i.e. "OutputTopic-123
+     * source-task"
      */
     public static final String TASK_SPAN_NAME_FORMAT = "%s %s";
 

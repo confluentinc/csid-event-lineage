@@ -17,7 +17,8 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
 /**
- * Instrumentation for {@link org.apache.kafka.streams.state.internals.ValueAndTimestampDeserializer}.
+ * Instrumentation for
+ * {@link org.apache.kafka.streams.state.internals.ValueAndTimestampDeserializer}.
  * <p>
  * Injects logic for rawValue and rawTimestamp extraction from Trace+Timestamp+Value composite
  * payloads.

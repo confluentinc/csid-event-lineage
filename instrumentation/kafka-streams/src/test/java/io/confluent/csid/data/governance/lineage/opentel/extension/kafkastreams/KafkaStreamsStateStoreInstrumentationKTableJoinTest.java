@@ -17,14 +17,9 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -91,7 +86,8 @@ public class KafkaStreamsStateStoreInstrumentationKTableJoinTest {
     String value = "value";
 
     KafkaStreams kafkaStreams = prepareKStreamTopologyWithKTable();
-    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic, outputTopic, ktableTopic);
+    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
+        outputTopic, ktableTopic);
 
     commonTestUtils.produceSingleEvent(ktableTopic, key, value, CAPTURED_PROPAGATED_HEADER);
     commonTestUtils.produceSingleEvent(inputTopic, key, value);

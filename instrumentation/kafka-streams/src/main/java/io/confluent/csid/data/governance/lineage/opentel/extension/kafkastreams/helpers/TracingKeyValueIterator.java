@@ -11,8 +11,8 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
 
 /**
- * Tracing KeyValueIterator wrapper - used by {@link TracingKeyValueStore}, {@link
- * TracingSessionStore} and {@link TracingWindowStoreIterator}
+ * Tracing KeyValueIterator wrapper - used by {@link TracingKeyValueStore},
+ * {@link TracingSessionStore} and {@link TracingWindowStoreIterator}
  * <p>
  * Implements {@link KeyValueIterator} by delegating method calls to wrapped KeyValueIterator
  * optionally executing tracing behaviour
@@ -31,7 +31,8 @@ public class TracingKeyValueIterator<K> implements KeyValueIterator<K, byte[]> {
 
   protected TracingKeyValueIterator(KeyValueIterator<K, byte[]> wrapped,
       StateStorePropagationHelpers stateStorePropagationHelpers,
-      OpenTelemetryWrapper openTelemetryWrapper, String storeName, Supplier<Headers> headersAccessor) {
+      OpenTelemetryWrapper openTelemetryWrapper, String storeName,
+      Supplier<Headers> headersAccessor) {
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;
     this.wrapped = wrapped;

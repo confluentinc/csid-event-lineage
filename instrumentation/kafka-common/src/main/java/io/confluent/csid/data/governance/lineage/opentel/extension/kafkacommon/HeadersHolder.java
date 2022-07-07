@@ -31,6 +31,7 @@ public class HeadersHolder {
 
   /**
    * Null safe headers' retrieval - removes the need for null checking in all downstream logic.
+   *
    * @return Headers stored or empty Headers if none. Null-safe.
    */
   public static Headers get() {

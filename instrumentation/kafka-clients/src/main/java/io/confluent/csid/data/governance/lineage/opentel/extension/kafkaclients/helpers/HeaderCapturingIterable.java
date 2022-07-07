@@ -28,8 +28,8 @@ public class HeaderCapturingIterable<K, V>
   }
 
   /**
-   * Wraps iterable with {@link HeaderCapturingIterable} if {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()}
-   * is true.
+   * Wraps iterable with {@link HeaderCapturingIterable} if
+   * {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()} is true.
    *
    * @param delegate generic ConsumerRecord iterable to wrap
    * @param <K>      ConsumerRecord Key type

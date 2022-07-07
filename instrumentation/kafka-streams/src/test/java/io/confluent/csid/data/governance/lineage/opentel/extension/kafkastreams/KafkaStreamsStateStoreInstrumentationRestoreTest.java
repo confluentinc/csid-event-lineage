@@ -21,7 +21,6 @@ import static org.awaitility.Awaitility.await;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -29,9 +28,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.Serdes;
@@ -139,7 +135,8 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
     StreamsBuilder streamsBuilder = new StreamsBuilder();
     streamsBuilderTopologyProvider.accept(streamsBuilder, inputTopic, outputTopic);
     KafkaStreams kafkaStreams = new KafkaStreams(streamsBuilder.build(), streamsProperties);
-    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic, outputTopic);
+    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
+        outputTopic);
 
     commonTestUtils.produceSingleEvent(inputTopic, key, "v1", sentHeaders);
 

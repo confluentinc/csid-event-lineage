@@ -66,7 +66,8 @@ public class HeaderSerde {
   /**
    * Put serialized header byte[] into ByteBuffer.
    * <p>
-   * Format - key_length(byte[4])+key(byte[key.length])+value_length(byte[4])+value(byte[value.length])
+   * Format -
+   * key_length(byte[4])+key(byte[key.length])+value_length(byte[4])+value(byte[value.length])
    *
    * @param buffer to put the serialized header to.
    */

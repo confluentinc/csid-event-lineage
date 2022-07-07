@@ -30,8 +30,8 @@ public class HeaderCapturingIterator<K, V>
   }
 
   /**
-   * Wraps iterator with {@link HeaderCapturingIterator} if {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()}
-   * is true.
+   * Wraps iterator with {@link HeaderCapturingIterator} if
+   * {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()} is true.
    *
    * @param delegate generic ConsumerRecord iterator to wrap
    * @param <K>      ConsumerRecord Key type
@@ -52,8 +52,8 @@ public class HeaderCapturingIterator<K, V>
   }
 
   /**
-   * In addition to returning next ConsumerRecord (if present) - store configured headers in {@link
-   * HeadersHolder} for automatic propagation on produce.
+   * In addition to returning next ConsumerRecord (if present) - store configured headers in
+   * {@link HeadersHolder} for automatic propagation on produce.
    * <p>
    * Capture header key/values as Span attributes according to configured whitelist. Headers are
    * captured according to configuration as is (as byte[] values) and recorded to the consume span

@@ -12,12 +12,14 @@ import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
 
-@Slf4j
+
 /**
- * Extension on TracingCollection, returns TracingIterator for listIterator() calls and TracingList for subList().
+ * Extension on TracingCollection, returns TracingIterator for listIterator() calls and TracingList
+ * for subList().
  * <p>
- *   Note: get() method does not trigger tracing logic / span creation.
+ * Note: get() method does not trigger tracing logic / span creation.
  */
+@Slf4j
 public class TracingList<T extends ConnectRecord<T>> extends TracingCollection<T> implements
     List<T> {
 
@@ -25,6 +27,7 @@ public class TracingList<T extends ConnectRecord<T>> extends TracingCollection<T
 
   /**
    * Wraps delegate List
+   *
    * @param delegate list to wrap
    * @param spanName Span name to pass into iterator - for creating new spans on next() call.
    */

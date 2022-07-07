@@ -62,7 +62,9 @@ public class ValueAndTimestampHandler {
    *                   Trace Timestamp ValueBytes
    * @return Trace + Value bytes with timestamp removed or null if not trace enabled
    * <p>
-   * See {@link org.apache.kafka.streams.state.internals.ValueAndTimestampDeserializer#rawValue(byte[])}
+   * See
+   * {@link
+   * org.apache.kafka.streams.state.internals.ValueAndTimestampDeserializer#rawValue(byte[])}
    */
   public byte[] rawValue(byte[] bytesValue) {
     if (null == bytesValue) {
@@ -95,7 +97,9 @@ public class ValueAndTimestampHandler {
    *                   Trace Timestamp ValueBytes
    * @return Timestamp bytes (if traced value) or original bytes (if not traced).
    * <p>
-   * See {@link org.apache.kafka.streams.state.internals.ValueAndTimestampDeserializer#rawTimestamp(byte[])}
+   * See
+   * {@link
+   * org.apache.kafka.streams.state.internals.ValueAndTimestampDeserializer#rawTimestamp(byte[])}
    */
   public byte[] rawTimestamp(byte[] bytesValue) {
     if (null == bytesValue) {
@@ -156,7 +160,8 @@ public class ValueAndTimestampHandler {
    * @param wrappedConverter converter to wrap / combine with
    * @return converter chain - wrapped converter followed by rearranging converter.
    * <p>
-   * See {@link RecordConverters#rawValueToTimestampedValue()} and {@link
+   * See {@link RecordConverters#rawValueToTimestampedValue()} and
+   * {@link
    * org.apache.kafka.streams.processor.internals.StateManagerUtil#converterForStore(StateStore)}
    */
   public RecordConverter rearrangingRawValueToTimestampedValueConverter(

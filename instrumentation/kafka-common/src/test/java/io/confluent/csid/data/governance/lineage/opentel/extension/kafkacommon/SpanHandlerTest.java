@@ -38,7 +38,8 @@ class SpanHandlerTest {
 
     OpenTelemetry mockOpenTelemetry = mock(OpenTelemetry.class, Answers.RETURNS_DEEP_STUBS);
     when(mockOpenTelemetryWrapper.globalOpenTelemetry()).thenReturn(mockOpenTelemetry);
-    when(mockOpenTelemetry.getTracer(Constants.INSTRUMENTATION_NAME_KAFKA_STREAMS).spanBuilder(spanName)
+    when(mockOpenTelemetry.getTracer(Constants.INSTRUMENTATION_NAME_KAFKA_STREAMS)
+        .spanBuilder(spanName)
         .setParent(mockContext)).thenReturn(mockSpanBuilder);
     when(mockSpanBuilder.startSpan()).thenReturn(span);
 
@@ -58,11 +59,13 @@ class SpanHandlerTest {
 
     OpenTelemetry mockOpenTelemetry = mock(OpenTelemetry.class, Answers.RETURNS_DEEP_STUBS);
     when(mockOpenTelemetryWrapper.globalOpenTelemetry()).thenReturn(mockOpenTelemetry);
-    when(mockOpenTelemetry.getTracer(Constants.INSTRUMENTATION_NAME_KAFKA_STREAMS).spanBuilder(spanName)
+    when(mockOpenTelemetry.getTracer(Constants.INSTRUMENTATION_NAME_KAFKA_STREAMS)
+        .spanBuilder(spanName)
         .setParent(mockContext).startSpan()).thenReturn(span);
 
     Span returnedSpan = classUnderTest.createAndStartSpan(spanName, mockContext);
-    verify(mockOpenTelemetry.getTracer(Constants.INSTRUMENTATION_NAME_KAFKA_STREAMS).spanBuilder(spanName)
+    verify(mockOpenTelemetry.getTracer(Constants.INSTRUMENTATION_NAME_KAFKA_STREAMS)
+        .spanBuilder(spanName)
         .setParent(mockContext)).startSpan();
     assertThat(returnedSpan).isEqualTo(span);
   }
