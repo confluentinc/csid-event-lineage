@@ -9,6 +9,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.S
 import java.nio.ByteBuffer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.streams.state.internals.RecordConverter;
+import org.apache.kafka.streams.state.internals.RecordConverters;
 
 /**
  * Handling of ValueAndTimestamp transformations for tracing - in multiple places KStreams library
@@ -59,7 +60,6 @@ public class ValueAndTimestampHandler {
    * @param bytesValue byte[] holding timestamp, value and optionally trace data in sequence of
    *                   Trace Timestamp ValueBytes
    * @return Trace + Value bytes with timestamp removed or null if not trace enabled
-   * <p>
    * @see org.apache.kafka.streams.state.internals.ValueAndTimestampDeserializer#rawValue(byte[])
    */
   public byte[] rawValue(byte[] bytesValue) {
@@ -92,7 +92,6 @@ public class ValueAndTimestampHandler {
    * @param bytesValue byte[] holding timestamp, value and optionally trace data in sequence of
    *                   Trace Timestamp ValueBytes
    * @return Timestamp bytes (if traced value) or original bytes (if not traced).
-   * <p>
    * @see org.apache.kafka.streams.state.internals.ValueAndTimestampDeserializer#rawTimestamp(byte[])
    */
   public byte[] rawTimestamp(byte[] bytesValue) {
@@ -153,7 +152,6 @@ public class ValueAndTimestampHandler {
    *
    * @param wrappedConverter converter to wrap / combine with
    * @return converter chain - wrapped converter followed by rearranging converter.
-   * <p>
    * @see RecordConverters#rawValueToTimestampedValue()
    * @see org.apache.kafka.streams.processor.internals.StateManagerUtil#converterForStore(StateStore)
    */
