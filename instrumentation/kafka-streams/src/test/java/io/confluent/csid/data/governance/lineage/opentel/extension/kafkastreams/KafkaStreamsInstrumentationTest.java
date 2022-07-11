@@ -19,6 +19,7 @@ import static org.awaitility.Awaitility.await;
 
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -42,6 +43,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 public class KafkaStreamsInstrumentationTest {
 
@@ -63,9 +65,12 @@ public class KafkaStreamsInstrumentationTest {
   private String outputTopic;
   private CommonTestUtils commonTestUtils;
 
+  @TempDir
+  File tempDir;
+
   @BeforeEach
   void setup() {
-    commonTestUtils = new CommonTestUtils();
+    commonTestUtils = new CommonTestUtils(tempDir);
     inputTopic = "input-topic-" + UUID.randomUUID();
     outputTopic = "output-topic-" + UUID.randomUUID();
   }
