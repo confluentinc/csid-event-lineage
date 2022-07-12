@@ -32,9 +32,10 @@ public class HeaderCapturingIterator<K, V> implements Iterator<ConsumerRecord<K,
    * Wraps iterator with {@link HeaderCapturingIterator} if
    * {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()} is true.
    *
-   * @param delegate generic ConsumerRecord iterator to wrap
-   * @param <K>      ConsumerRecord Key type
-   * @param <V>      ConsumerRecord Value type
+   * @param delegate        generic ConsumerRecord iterator to wrap
+   * @param <K>             ConsumerRecord Key type
+   * @param <V>             ConsumerRecord Value type
+   * @param serviceMetadata service metadata - service name, cluster id
    * @return {@link HeaderCapturingIterator}
    */
   public static <K, V> Iterator<ConsumerRecord<K, V>> wrap(Iterator<ConsumerRecord<K, V>> delegate,

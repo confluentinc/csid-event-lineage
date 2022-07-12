@@ -32,6 +32,7 @@ public class HeaderCapturingIterable<K, V> implements Iterable<ConsumerRecord<K,
    * @param delegate generic ConsumerRecord iterable to wrap
    * @param <K>      ConsumerRecord Key type
    * @param <V>      ConsumerRecord Value type
+   * @param serviceMetadata service metadata - service name, cluster id
    * @return {@link HeaderCapturingIterable} or wrapped iterable if wrapping is not enabled.
    */
   public static <K, V> Iterable<ConsumerRecord<K, V>> wrap(

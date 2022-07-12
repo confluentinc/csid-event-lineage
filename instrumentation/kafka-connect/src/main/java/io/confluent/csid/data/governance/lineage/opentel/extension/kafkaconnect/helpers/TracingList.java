@@ -37,8 +37,9 @@ public class TracingList<T extends ConnectRecord<T>> extends TracingCollection<T
   /**
    * Wraps delegate List
    *
-   * @param delegate list to wrap
-   * @param spanName Span name to pass into iterator - for creating new spans on next() call.
+   * @param delegate    list to wrap
+   * @param spanName    Span name to pass into iterator - for creating new spans on next() call.
+   * @param connectorId connectorId - used for overriding service name.
    */
   public TracingList(List<T> delegate, String spanName, String connectorId) {
     super(delegate, spanName, connectorId);
