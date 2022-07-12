@@ -3,78 +3,53 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertTracesCaptured;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.consume;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.produce;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.sourceTask;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TraceAssertData.trace;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
-import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
-import io.opentelemetry.sdk.trace.data.SpanData;
-import java.io.File;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
+import io.opentelemetry.proto.resource.v1.Resource;
+import io.opentelemetry.proto.trace.v1.Span;
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import lombok.SneakyThrows;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.junit.jupiter.api.io.TempDir;
 
-public class SourceTaskTracingTest {
+public class SourceTaskTracingTest extends IntegrationTest {
 
-  @RegisterExtension
-  static final AgentInstrumentationExtension instrumentation =
-      AgentInstrumentationExtension.create();
-
-  private String testTopic;
-  CommonTestUtils commonTestUtils;
-
-  @TempDir
-  File tempDir;
+  private String testTopic = "connect-topic";
+  private final String SOURCE_TASK_NAME = String.format(SpanNames.TASK_SPAN_NAME_FORMAT, testTopic,
+      SpanNames.SOURCE_TASK);
+  private final String SEND_TASK_NAME = String.format(SpanNames.PRODUCE_CONSUME_TASK_FORMAT,
+      testTopic, SpanNames.PRODUCER_SEND);
 
   @BeforeEach
   void setup() {
-    testTopic = "test-topic-" + UUID.randomUUID();
-    commonTestUtils = new CommonTestUtils(tempDir);
-    commonTestUtils.startKafkaContainer();
+    super.setup();
+    startConnectContainer(Connectors.SOURCE_NO_SMT);
   }
 
   @AfterEach
   void cleanup() {
-    instrumentation.clearData();
-    commonTestUtils.stopKafkaContainer();
+    super.cleanup();
   }
 
-  @SneakyThrows
   @Test
   void testSourceTask() {
-    ConnectStandalone connectStandalone = new ConnectStandalone(
-        commonTestUtils.getConnectWorkerProperties(),
-        commonTestUtils.getSourceTaskProperties(null, testTopic));
-    CountDownLatch connectLatch = new CountDownLatch(1);
-    new Thread(() -> {
-      connectStandalone.start();
-      try {
 
-        connectLatch.await();
-      } catch (InterruptedException e) {
-      } finally {
-        connectStandalone.stop();
-      }
-    }).start();
-    commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
+    consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
         testTopic, 1);
 
-    connectLatch.countDown();
-
-    List<List<SpanData>> traces = instrumentation.waitForTraces(1);
-    //Expected trace - source-task, producer send, consumer process.
-    assertTracesCaptured(traces,
-        trace().withSpans(sourceTask().withNameContaining(testTopic), produce(), consume()));
+    //Looking for trace with sourceTask -> send task spans.
+    List<Pair<Resource, Span>> expectedTrace = findTraceBySpanNamesWithinTimeout(10,
+        SOURCE_TASK_NAME, SEND_TASK_NAME);
+    assertThat(expectedTrace).as("Could not find trace with %s, %s spans.", SOURCE_TASK_NAME,
+            SEND_TASK_NAME)
+        .isNotNull();
+    assertThat(expectedTrace.size()).as("Unexpected span as part of %s, %s trace.",
+            SOURCE_TASK_NAME, SEND_TASK_NAME)
+        .isEqualTo(2);
   }
+
+
 }

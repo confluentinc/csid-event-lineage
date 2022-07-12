@@ -75,5 +75,10 @@ public class Constants {
      * removeSession
      */
     public static final String STATE_STORE_DELETE = "state-store-delete";
+
+    public static String PRODUCE_CONSUME_TASK_FORMAT = "%s %s";
+    public static final String PRODUCER_SEND ="send" ;
+
+    public static final String CONSUMER_PROCESS ="process" ;
   }
 }

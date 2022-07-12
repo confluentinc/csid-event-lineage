@@ -35,7 +35,12 @@ dependencies {
     testImplementation("org.awaitility:awaitility:${versions.awaitility}")
     testImplementation("org.slf4j:slf4j-simple:${versions.slf4j}")
     testImplementation("org.apache.kafka:connect-runtime:${versions.kafka}")
-
+    testImplementation("com.squareup.okhttp3:okhttp:3.12.12")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:${versions.jackson}")
+    testImplementation("com.google.protobuf:protobuf-java-util:3.12.4")
+    testImplementation("com.squareup.okhttp3:okhttp:3.12.12")
+    testImplementation("io.opentelemetry:opentelemetry-api:${versions.opentelemetry}")
+    testImplementation("io.opentelemetry.proto:opentelemetry-proto:0.13.0-alpha")
 
 }
 

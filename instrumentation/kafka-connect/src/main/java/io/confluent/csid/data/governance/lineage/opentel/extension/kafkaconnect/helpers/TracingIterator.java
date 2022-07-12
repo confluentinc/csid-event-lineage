@@ -107,7 +107,6 @@ public class TracingIterator<T extends ConnectRecord<T>>
     delegateIterator.remove();
   }
 
-
   protected void closeScopeAndEndSpan() {
     if (currentScope != null) {
       currentSpan.end();
