@@ -13,10 +13,13 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.C
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.instrumentation.api.field.VirtualField;
 import java.util.Iterator;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.runtime.InternalSinkRecord;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 /**
  * Wraps ConnectRecord iterator and executes span creation and header capture logic on "next()"
@@ -32,6 +35,8 @@ public class TracingIterator<T extends ConnectRecord<T>>
   private Scope currentScope;
   private Span currentSpan;
 
+  private final VirtualField<InternalSinkRecord, Context> sinkRecordContextStore;
+
   /**
    * Wraps delegate iterator
    *
@@ -42,6 +47,8 @@ public class TracingIterator<T extends ConnectRecord<T>>
     this.spanName = spanName;
     this.delegateIterator = delegateIterator;
     this.connectorId = connectorId;
+    this.sinkRecordContextStore = VirtualField.find(SinkRecord.class, Context.class);
+
     log.trace("Creating TracingIterator spanName={}, delegate={}, connectorId={}", spanName,
         delegateIterator, connectorId);
   }
@@ -77,18 +84,27 @@ public class TracingIterator<T extends ConnectRecord<T>>
 
   protected void recordSpan(T record) {
     if (record != null) {
-      byte[] traceHeaderValue = Optional.ofNullable(record.headers()).flatMap(
-          headers -> Optional.ofNullable(headers.lastWithName(
-              Constants.TRACING_HEADER))).map(header -> connectHandler().convertHeaderValue(header,
-          headerCaptureConfiguration().getHeaderValueEncoding())).orElse(null);
-      Context parentContext;
-      String traceId = null;
-      if (traceHeaderValue != null) {
-        traceId = new String(traceHeaderValue,
-            headerCaptureConfiguration().getHeaderValueEncoding());
-        parentContext = openTelemetryWrapper().contextFromTraceIdString(traceId);
-      } else {
-        parentContext = openTelemetryWrapper().currentContext();
+      Context parentContext = null;
+
+      if (record instanceof SinkRecord) {
+        parentContext = sinkRecordContextStore.get((InternalSinkRecord) record);
+      }
+
+      if (parentContext == null) {
+
+        byte[] traceHeaderValue = Optional.ofNullable(record.headers()).flatMap(
+                headers -> Optional.ofNullable(headers.lastWithName(
+                    Constants.TRACING_HEADER)))
+            .map(header -> connectHandler().convertHeaderValue(header,
+                headerCaptureConfiguration().getHeaderValueEncoding())).orElse(null);
+        String traceId = null;
+        if (traceHeaderValue != null) {
+          traceId = new String(traceHeaderValue,
+              headerCaptureConfiguration().getHeaderValueEncoding());
+          parentContext = openTelemetryWrapper().contextFromTraceIdString(traceId);
+        } else {
+          parentContext = openTelemetryWrapper().currentContext();
+        }
       }
       String topicSpanName = String.format(SpanNames.TASK_SPAN_NAME_FORMAT, record.topic(),
           spanName);
@@ -97,8 +113,8 @@ public class TracingIterator<T extends ConnectRecord<T>>
       openTelemetryWrapper().currentSpan().setAttribute(Constants.SERVICE_NAME_KEY, connectorId);
       connectHandler().captureConnectHeadersToCurrentSpan(record.headers(),
           headerCaptureConfiguration().getHeaderValueEncoding());
-      log.trace("Created Span in iterator.next, parentTrace={}",
-          traceId != null ? traceId : "null");
+      log.trace("Created Span in iterator.next, parentContext={}",
+          parentContext);
     }
   }
 
