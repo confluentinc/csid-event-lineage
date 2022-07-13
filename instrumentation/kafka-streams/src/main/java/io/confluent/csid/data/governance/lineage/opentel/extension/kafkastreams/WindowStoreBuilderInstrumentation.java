@@ -31,7 +31,8 @@ public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
     return named("org.apache.kafka.streams.state.internals.TimestampedWindowStoreBuilder").or(
-        named("org.apache.kafka.streams.state.internals.WindowStoreBuilder"));
+        named("org.apache.kafka.streams.state.internals.WindowStoreBuilder")).or(
+        named("org.apache.kafka.streams.state.internals.TimeOrderedWindowStoreBuilder"));
   }
 
   /**

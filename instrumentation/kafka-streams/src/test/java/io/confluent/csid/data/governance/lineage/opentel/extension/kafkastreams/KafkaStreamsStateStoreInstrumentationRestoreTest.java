@@ -20,6 +20,7 @@ import static org.awaitility.Awaitility.await;
 
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
@@ -27,12 +28,14 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KafkaStreams.State;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Materialized;
@@ -45,6 +48,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -54,6 +58,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * operations that produce KTable and utilize StateStore put/get . Using groupByKey().count() and
  * groupByKey().aggregate().
  */
+@Slf4j
 public class KafkaStreamsStateStoreInstrumentationRestoreTest {
 
   @RegisterExtension
@@ -65,7 +70,10 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
 
   private CommonTestUtils commonTestUtils;
 
-  CountDownLatch streamsLatch = new CountDownLatch(1);
+  CountDownLatch streamsLatch;
+
+  @TempDir
+  File tempDir;
 
   @BeforeAll
   static void setupAll() {
@@ -78,20 +86,18 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
   }
 
   @BeforeEach
-  void setup() {
-    commonTestUtils = new CommonTestUtils();
+  void setup(){
+    commonTestUtils = new CommonTestUtils(tempDir);
     commonTestUtils.startKafkaContainer();
     inputTopic = "input-topic-" + UUID.randomUUID();
     outputTopic = "output-topic-" + UUID.randomUUID();
+    streamsLatch = new CountDownLatch(1);
   }
-
   @AfterEach
-  void teardown() {
-    streamsLatch.countDown();
-    commonTestUtils.stopKafkaContainer();
+  void tearDown(){
     instrumentation.clearData();
+    commonTestUtils.stopKafkaContainer();
   }
-
   static Stream<Arguments> topologyCombinations() {
     return Stream.of(Arguments.of(
             "Default state store",
@@ -120,6 +126,7 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
   @DisplayName("Test KStream tracing with state store restoration using (GroupByKey -> Aggregate)")
   void testKStreamStateStoreRestoration(String testName,
       TriConsumer<StreamsBuilder, String, String> streamsBuilderTopologyProvider) {
+
     Properties consumerPropertyOverrides = new Properties();
     consumerPropertyOverrides.setProperty(ConsumerConfig.CLIENT_ID_CONFIG,
         "test-consumer-" + UUID.randomUUID());
@@ -149,10 +156,16 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
 
     instrumentation.waitForTraces(3);
 
-    kafkaStreams.close();
-    kafkaStreams.cleanUp();
-    kafkaStreams = new KafkaStreams(streamsBuilder.build(), streamsProperties);
-    kafkaStreams.start();
+    streamsLatch.countDown();
+    commonTestUtils.awaitKStreamsShutdown(kafkaStreams);
+    tempDir.delete();
+
+    streamsLatch = new CountDownLatch(1);
+    KafkaStreams kafkaStreams2 = new KafkaStreams(streamsBuilder.build(), streamsProperties);
+    commonTestUtils.createTopologyAndStartKStream(kafkaStreams2, streamsLatch);
+    await().atMost(Duration.ofSeconds(100))
+        .until(() -> kafkaStreams2.state().equals(State.RUNNING));
+
     commonTestUtils.produceSingleEvent(inputTopic, key, "v4");
 
     commonTestUtils.consumeAtLeastXEvents(Serdes.String().deserializer().getClass(),
@@ -196,5 +209,8 @@ public class KafkaStreamsStateStoreInstrumentationRestoreTest {
             produceChangelog().withoutHeaders(CAPTURE_WHITELISTED_HEADERS),
             produce().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS),
             consume().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)));
+
+    streamsLatch.countDown();
+    commonTestUtils.awaitKStreamsShutdown(kafkaStreams2);
   }
 }
