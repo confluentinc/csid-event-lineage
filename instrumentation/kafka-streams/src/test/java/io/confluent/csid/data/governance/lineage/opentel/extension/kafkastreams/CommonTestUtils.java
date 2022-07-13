@@ -8,6 +8,7 @@ import static org.awaitility.Awaitility.await;
 
 import io.opentelemetry.sdk.testing.assertj.TracesAssert;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +18,7 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -35,19 +37,24 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KafkaStreams.State;
 import org.apache.kafka.streams.StreamsConfig;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
+@RequiredArgsConstructor
 public class CommonTestUtils {
 
+  private static final String KAFKA_CONTAINER_VERSION = "7.0.1";
+  private final File tempDir;
   private String kafkaBootstrapServers = "dummy";
   private KafkaContainer kafkaContainer;
 
   public void startKafkaContainer() {
     if (kafkaContainer == null) {
-      kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.0.1"))
+      kafkaContainer = new KafkaContainer(
+          DockerImageName.parse("confluentinc/cp-kafka:" + KAFKA_CONTAINER_VERSION))
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS", "1")
@@ -90,6 +97,7 @@ public class CommonTestUtils {
     props.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "100");
     props.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
     props.setProperty(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0"); // disable ktable cache
+    props.setProperty(StreamsConfig.STATE_DIR_CONFIG, tempDir.getAbsolutePath());
     return props;
   }
 
@@ -171,10 +179,13 @@ public class CommonTestUtils {
 
   public void createTopologyAndStartKStream(KafkaStreams kafkaStreams, CountDownLatch streamsLatch,
       String... topics) {
-    AdminClient adminClient = KafkaAdminClient.create(
-        getKafkaProperties(new Properties()));
-    adminClient.createTopics(Arrays.stream(topics).map(topic ->
-        new NewTopic(topic, 1, (short) 1)).collect(Collectors.toList()));
+    if (topics != null && topics.length > 0) {
+      AdminClient adminClient = KafkaAdminClient.create(
+          getKafkaProperties(new Properties()));
+      adminClient.createTopics(Arrays.stream(topics).map(topic ->
+          new NewTopic(topic, 1, (short) 1)).collect(Collectors.toList()));
+      adminClient.close();
+    }
 
     new Thread(() -> {
       kafkaStreams.start();
@@ -188,5 +199,9 @@ public class CommonTestUtils {
         Thread.currentThread().interrupt();
       }
     }).start();
+  }
+
+  public void awaitKStreamsShutdown(KafkaStreams kafkaStreams) {
+    await().atMost(Duration.ofSeconds(60)).until(()->kafkaStreams.state().equals(State.NOT_RUNNING));
   }
 }

@@ -40,6 +40,8 @@ dependencies {
     testImplementation("io.opentelemetry:opentelemetry-sdk-testing:${versions.opentelemetry}")
     testImplementation("io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${versions.opentelemetryJavaagentAlpha}")
     testImplementation("org.assertj:assertj-core:${versions.assertj}")
+    testImplementation("org.slf4j:slf4j-simple:${versions.slf4j}")
+
 }
 
 shadowJar {
@@ -55,13 +57,14 @@ tasks.withType(Test).configureEach {
     inputs.file(shadowJar.archiveFile)
 
     jvmArgs "-Dotel.javaagent.debug=true"
+    jvmArgs("-Dorg.slf4j.simpleLogger.defaultLogLevel=debug")
     jvmArgs "-javaagent:${configurations.testAgent.files.first().absolutePath}"
     jvmArgs "-Dotel.javaagent.experimental.initializer.jar=${shadowJar.archiveFile.get().asFile.absolutePath}"
     jvmArgs "-Dotel.javaagent.testing.additional-library-ignores.enabled=false"
     jvmArgs "-Dotel.javaagent.testing.fail-on-context-leak=true"
+    jvmArgs "-Dotel.metrics.exporter=none"
     // prevent sporadic gradle deadlocks, see SafeLogger for more details
     jvmArgs "-Dotel.javaagent.testing.transform-safe-logging.enabled=true"
-    jvmArgs "-Dotel.metrics.exporter=otlp"
 
     dependsOn shadowJar
 

@@ -33,6 +33,8 @@ import org.testcontainers.utility.DockerImageName;
 @Slf4j
 public class CommonTestUtils {
 
+  private static final String KAFKA_CONTAINER_VERSION = "7.0.1";
+
   private String kafkaBootsrapServers;
   private KafkaContainer kafkaContainer;
   private KafkaProducer<String, String> kafkaProducer;
@@ -42,7 +44,8 @@ public class CommonTestUtils {
 
   public void startKafkaContainer() {
     if (kafkaContainer == null) {
-      kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.2.1"))
+      kafkaContainer = new KafkaContainer(
+          DockerImageName.parse("confluentinc/cp-kafka:" + KAFKA_CONTAINER_VERSION))
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS", "1")
@@ -112,6 +115,7 @@ public class CommonTestUtils {
       });
       return consumed.size() == numberToConsume;
     });
+    consumer.close();
     log.info("Consumed Records: {}", consumed);
   }
 

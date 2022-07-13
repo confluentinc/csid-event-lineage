@@ -5,6 +5,7 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -98,8 +99,29 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
   }
 
   @Override
+  public KeyValueIterator<Bytes, byte[]> reverseRange(Bytes from, Bytes to) {
+    KeyValueIterator<Bytes, byte[]> resultIter = wrapped().reverseRange(from, to);
+    return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
+  }
+
+  @Override
   public KeyValueIterator<Bytes, byte[]> all() {
     KeyValueIterator<Bytes, byte[]> resultIter = wrapped().all();
+    return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
+  }
+
+  @Override
+  public KeyValueIterator<Bytes, byte[]> reverseAll() {
+    KeyValueIterator<Bytes, byte[]> resultIter = wrapped().reverseAll();
+    return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
+  }
+
+  public <PS extends Serializer<P>, P> KeyValueIterator<Bytes, byte[]> prefixScan(P prefix,
+      PS prefixKeySerializer) {
+    KeyValueIterator<Bytes, byte[]> resultIter = wrapped().prefixScan(prefix, prefixKeySerializer);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
         openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
