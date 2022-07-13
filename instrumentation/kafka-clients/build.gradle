@@ -5,6 +5,7 @@ plugins {
 }
 
 apply from: "$rootDir/gradle/instrumentation.gradle"
+apply from: "$rootDir/gradle/testagent.gradle"
 
 dependencies {
     implementation(project(":instrumentation:kafka-common"))
@@ -39,6 +40,7 @@ dependencies {
 
 
 }
+
 
 test {
     jvmArgs("-Dotel.instrumentation.kafka.experimental-span-attributes=true")

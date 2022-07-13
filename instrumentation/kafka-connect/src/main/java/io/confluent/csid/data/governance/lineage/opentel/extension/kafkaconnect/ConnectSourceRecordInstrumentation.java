@@ -21,9 +21,7 @@ public class ConnectSourceRecordInstrumentation implements
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
-    return
-        named(
-            "org.apache.kafka.connect.source.SourceRecord");
+    return named("org.apache.kafka.connect.source.SourceRecord");
   }
 
   /**
@@ -35,8 +33,7 @@ public class ConnectSourceRecordInstrumentation implements
   public void transform(TypeTransformer transformer) {
 
     transformer.applyAdviceToMethod(
-        isConstructor()
-            .and(isPublic()).and(takesArguments(10)),
+        isConstructor().and(isPublic()).and(takesArguments(10)),
         ConnectSourceRecordInstrumentation.class.getName()
             + "$SourceRecordConstructorAdvice");
   }
@@ -44,10 +41,9 @@ public class ConnectSourceRecordInstrumentation implements
   public static class SourceRecordConstructorAdvice {
 
     @Advice.OnMethodExit(suppress = Throwable.class)
-    public static void onExit(
-        @Advice.Return SourceRecord sourceRecord) {
+    public static void onExit(@Advice.This SourceRecord sourceRecord) {
       //capture current tracing context and associate to SourceRecord created.
-      //Only execute if inside SourceTask.poll call - indicted by SourcePollMarker.
+      //Only execute if inside SourceTask.poll call - indicated by SourcePollMarker.
       if (SourcePollMarkerHolder.get()) {
         VirtualField<SourceRecord, Context> sourceRecordContextStore = VirtualField.find(
             SourceRecord.class, Context.class);

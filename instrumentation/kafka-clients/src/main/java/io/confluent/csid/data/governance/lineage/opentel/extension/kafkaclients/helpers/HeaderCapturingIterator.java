@@ -70,7 +70,9 @@ public class HeaderCapturingIterator<K, V> implements Iterator<ConsumerRecord<K,
       headersHandler().storeHeadersForPropagation(record.headers());
       headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
           record.headers().toArray());
-      spanHandler().captureServiceMetadataToSpan(serviceMetadata);
+      if (serviceMetadata != null) {
+        spanHandler().captureServiceMetadataToSpan(serviceMetadata);
+      }
     } else {
       HeadersHolder.clear();
     }

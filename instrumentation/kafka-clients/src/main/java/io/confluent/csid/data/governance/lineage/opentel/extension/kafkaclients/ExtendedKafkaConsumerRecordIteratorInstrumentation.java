@@ -14,7 +14,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.HeaderCapturingIterator;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.HeaderCapturingList;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceMetadata;
-import io.opentelemetry.instrumentation.api.field.VirtualField;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceNameHolder;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import io.opentelemetry.javaagent.instrumentation.kafkaclients.ConsumerRecordsInstrumentation;
@@ -76,11 +76,12 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
     public static <K, V> void wrap(
         @Advice.This ConsumerRecords<K, V> consumerRecords,
         @Advice.Return(readOnly = false) Iterable<ConsumerRecord<K, V>> iterable) {
+      if (consumerRecords == null || consumerRecords.isEmpty()) {
+        return;
+      }
       if (iterable != null) {
-        VirtualField<ConsumerRecords<?, ?>, ServiceMetadata> consumerRecordsServiceMetadata =
-            VirtualField.find(ConsumerRecords.class, ServiceMetadata.class);
         iterable = HeaderCapturingIterable.wrap(iterable,
-            consumerRecordsServiceMetadata.get(consumerRecords));
+            new ServiceMetadata(ServiceNameHolder.get()));
       }
     }
   }
@@ -92,12 +93,13 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
     public static <K, V> void wrap(
         @Advice.This ConsumerRecords<K, V> consumerRecords,
         @Advice.Return(readOnly = false) List<ConsumerRecord<K, V>> list) {
+      if (consumerRecords == null || consumerRecords.isEmpty()) {
+        return;
+      }
       if (list != null) {
-        VirtualField<ConsumerRecords<?, ?>, ServiceMetadata> consumerRecordsServiceMetadata =
-            VirtualField.find(ConsumerRecords.class, ServiceMetadata.class);
 
         list = HeaderCapturingList.wrap(list,
-            consumerRecordsServiceMetadata.get(consumerRecords));
+            new ServiceMetadata(ServiceNameHolder.get()));
       }
     }
   }
@@ -109,11 +111,12 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
     public static <K, V> void wrap(
         @Advice.This ConsumerRecords<K, V> consumerRecords,
         @Advice.Return(readOnly = false) Iterator<ConsumerRecord<K, V>> iterator) {
+      if (consumerRecords == null || consumerRecords.isEmpty()) {
+        return;
+      }
       if (iterator != null) {
-        VirtualField<ConsumerRecords<?, ?>, ServiceMetadata> consumerRecordsServiceMetadata =
-            VirtualField.find(ConsumerRecords.class, ServiceMetadata.class);
         iterator = HeaderCapturingIterator.wrap(iterator,
-            consumerRecordsServiceMetadata.get(consumerRecords));
+            new ServiceMetadata(ServiceNameHolder.get()));
       }
     }
   }

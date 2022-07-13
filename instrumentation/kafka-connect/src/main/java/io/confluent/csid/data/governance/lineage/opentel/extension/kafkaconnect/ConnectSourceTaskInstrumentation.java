@@ -30,7 +30,7 @@ import org.apache.kafka.connect.source.SourceRecord;
  * As the ConnectRecord collection is traversed during task execution - tracing logic in
  * TracingIterator is invoked and "sourceTask" Spans are recorded and headers captured.
  */
-public class ConnectWorkerSourceTaskInstrumentation implements TypeInstrumentation {
+public class ConnectSourceTaskInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
@@ -49,14 +49,14 @@ public class ConnectWorkerSourceTaskInstrumentation implements TypeInstrumentati
             .and(isProtected())
             .and(named("poll"))
             .and(takesArguments(0)),
-        ConnectWorkerSourceTaskInstrumentation.class.getName()
-            + "$SourceTaskPollAdvice");
+        ConnectSourceTaskInstrumentation.class.getName()
+            + "$WorkerSourceTaskPollAdvice");
   }
 
   @SuppressWarnings("unused")
-  public static class SourceTaskPollAdvice {
+  public static class WorkerSourceTaskPollAdvice {
 
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class)
     public static void onEnter() {
       //set marker to enable context capture in SourceRecord constructor
       SourcePollMarkerHolder.enableTracing();

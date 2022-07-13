@@ -63,9 +63,6 @@ public class HeaderCaptureConfiguration {
     } else {
       this.charset = StandardCharsets.UTF_8;
     }
-    log.info(
-        "HeaderCaptureConfiguration - CaptureWhitelist: {}, PropagationWhitelist: {}, Charset: {}",
-        this.headerCaptureWhiteList, this.headerPropagationWhiteList, this.charset);
   }
 
   /**

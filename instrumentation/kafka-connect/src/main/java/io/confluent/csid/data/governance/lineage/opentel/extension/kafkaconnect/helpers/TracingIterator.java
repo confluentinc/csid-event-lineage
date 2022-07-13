@@ -89,12 +89,16 @@ public class TracingIterator<T extends ConnectRecord<T>>
 
       if (record instanceof SinkRecord) {
         parentContext = sinkRecordContextStore.get((SinkRecord) record);
+        log.trace("SinkRecord={}, parentContext={}", record,
+            parentContext != null ? parentContext : "not found");
+
       } else if (record instanceof SourceRecord) {
         parentContext = sourceRecordContextStore.get((SourceRecord) record);
+        log.trace("SourceRecord={}, parentContext={}", record,
+            parentContext != null ? parentContext : "not found");
       }
 
       if (parentContext == null) {
-
         parentContext = openTelemetryWrapper().currentContext();
       }
 
