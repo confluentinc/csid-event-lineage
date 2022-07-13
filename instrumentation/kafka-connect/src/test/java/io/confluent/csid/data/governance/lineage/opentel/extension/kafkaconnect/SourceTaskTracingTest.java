@@ -3,7 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertTracesCaptured;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertAnyTraceSatisfies;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.consume;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.produce;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.sourceTask;
@@ -71,10 +71,11 @@ public class SourceTaskTracingTest {
         testTopic, 1);
 
     connectLatch.countDown();
+    connectStandalone.awaitStop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - source-task, producer send, consumer process.
-    assertTracesCaptured(traces,
+    assertAnyTraceSatisfies(traces,
         trace().withSpans(sourceTask().withNameContaining(testTopic), produce(), consume()));
   }
 }

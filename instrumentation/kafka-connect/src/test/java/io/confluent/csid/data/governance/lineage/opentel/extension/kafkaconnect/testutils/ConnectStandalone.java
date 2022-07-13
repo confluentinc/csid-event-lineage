@@ -3,7 +3,10 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
+import static org.awaitility.Awaitility.await;
+
 import java.net.URI;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
 import lombok.RequiredArgsConstructor;
@@ -131,6 +134,10 @@ public class ConnectStandalone {
 
   public boolean isRunning() {
     return connect != null && connect.isRunning();
+  }
+
+  public void awaitStop() {
+    await().atMost(Duration.ofSeconds(5)).until(() -> !isRunning());
   }
 }
 

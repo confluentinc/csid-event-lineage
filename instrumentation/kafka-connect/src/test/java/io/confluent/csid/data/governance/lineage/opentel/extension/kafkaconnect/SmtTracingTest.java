@@ -90,6 +90,7 @@ public class SmtTracingTest {
         testTopic, 1);
 
     connectLatch.countDown();
+    connectStandalone.awaitStop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     // Only checking first trace's second span - should be the SMT span.

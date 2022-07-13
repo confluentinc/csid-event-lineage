@@ -6,6 +6,7 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
 import static java.util.Collections.singleton;
+import static java.util.Collections.singletonList;
 import static org.awaitility.Awaitility.await;
 
 import io.opentelemetry.sdk.testing.assertj.TracesAssert;
@@ -49,6 +50,8 @@ import org.testcontainers.utility.DockerImageName;
 @RequiredArgsConstructor
 public class CommonTestUtils {
 
+  private static final String KAFKA_CONTAINER_VERSION = "7.0.1";
+
   private static final String CONNECT_TEMP_FILE = "connect_temp_file";
 
   private final File tempDir;
@@ -58,11 +61,12 @@ public class CommonTestUtils {
 
   public void startKafkaContainer() {
     if (kafkaContainer == null) {
-      kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.0.1"))
+      kafkaContainer = new KafkaContainer(
+          DockerImageName.parse("confluentinc/cp-kafka:" + KAFKA_CONTAINER_VERSION))
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS", "1")
-          .withEnv("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "500").withReuse(true);
+          .withEnv("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "500").withReuse(false);
     }
     kafkaContainer.start();
     kafkaBootstrapServers = kafkaContainer.getBootstrapServers();
@@ -203,10 +207,11 @@ public class CommonTestUtils {
     return consumeAtLeastXEvents(keyDeserializerClass, valueDeserializerClass, topic, 1).get(0);
   }
 
-  public static void assertTracesCaptured(List<List<SpanData>> traces,
+  public static void assertAnyTraceSatisfies(List<List<SpanData>> traces,
       TraceAssertData... expectations) {
-    TracesAssert.assertThat(traces).hasSize(expectations.length)
-        .hasTracesSatisfyingExactly(expectations);
+    TracesAssert.assertThat(traces).anySatisfy(
+        (trace) -> TracesAssert.assertThat(singletonList(trace))
+            .hasTracesSatisfyingExactly(expectations));
   }
 
   public File createTempFile(File tempDir) {

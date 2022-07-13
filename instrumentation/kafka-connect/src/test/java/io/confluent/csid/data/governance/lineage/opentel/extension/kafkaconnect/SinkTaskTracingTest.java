@@ -3,7 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertTracesCaptured;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertAnyTraceSatisfies;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.cleanupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.setupHeaderConfiguration;
@@ -96,12 +96,13 @@ public class SinkTaskTracingTest {
 
     await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
         .until(() -> instrumentation.waitForTraces(1).get(0).size() == 3);
-    List<List<SpanData>> traces = instrumentation.waitForTraces(1);
 
     connectLatch.countDown();
+    connectStandalone.awaitStop();
 
-    //Expected trace - source-task, producer send, consumer process.
-    assertTracesCaptured(traces,
+    List<List<SpanData>> traces = instrumentation.waitForTraces(1);
+    //Expected trace - producer send, consumer process, sink-task
+    assertAnyTraceSatisfies(traces,
         trace().withSpans(produce(), consume(), sinkTask().withNameContaining(testTopic)
             .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
   }
