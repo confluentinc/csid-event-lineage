@@ -3,14 +3,17 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertAnyTraceSatisfies;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertTracesCaptured;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.consume;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.produce;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.sourceTask;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.testSourcePollTask;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TraceAssertData.trace;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.VerifiableSourceConnector;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.VerifiableSourceIndividuallyTracedConnector;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.io.File;
@@ -55,7 +58,7 @@ public class SourceTaskTracingTest {
   void testSourceTask() {
     ConnectStandalone connectStandalone = new ConnectStandalone(
         commonTestUtils.getConnectWorkerProperties(),
-        commonTestUtils.getSourceTaskProperties(null, testTopic));
+        commonTestUtils.getSourceTaskProperties(null, testTopic, VerifiableSourceConnector.class));
     CountDownLatch connectLatch = new CountDownLatch(1);
     new Thread(() -> {
       connectStandalone.start();
@@ -68,14 +71,49 @@ public class SourceTaskTracingTest {
       }
     }).start();
     commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
-        testTopic, 1);
+        testTopic, 2);
 
     connectLatch.countDown();
     connectStandalone.awaitStop();
 
-    List<List<SpanData>> traces = instrumentation.waitForTraces(1);
+    List<List<SpanData>> traces = instrumentation.waitForTraces(2);
     //Expected trace - source-task, producer send, consumer process.
-    assertAnyTraceSatisfies(traces,
+    assertTracesCaptured(traces,
+        trace().withSpans(sourceTask().withNameContaining(testTopic), produce(), consume()),
         trace().withSpans(sourceTask().withNameContaining(testTopic), produce(), consume()));
+  }
+
+
+  @SneakyThrows
+  @Test
+  void testSourceTaskInheritsSpanFromPoll() {
+    ConnectStandalone connectStandalone = new ConnectStandalone(
+        commonTestUtils.getConnectWorkerProperties(),
+        commonTestUtils.getSourceTaskProperties(null, testTopic,
+            VerifiableSourceIndividuallyTracedConnector.class));
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    new Thread(() -> {
+      connectStandalone.start();
+      try {
+
+        connectLatch.await();
+      } catch (InterruptedException e) {
+      } finally {
+        connectStandalone.stop();
+      }
+    }).start();
+    commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
+        testTopic, 2);
+
+    connectLatch.countDown();
+    connectStandalone.awaitStop();
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(2);
+    //Expected trace - test-source-poll, source-task, producer send, consumer process.
+    assertTracesCaptured(traces,
+        trace().withSpans(testSourcePollTask(), sourceTask().withNameContaining(testTopic),
+            produce(), consume()),
+        trace().withSpans(testSourcePollTask(), sourceTask().withNameContaining(testTopic),
+            produce(), consume()));
   }
 }

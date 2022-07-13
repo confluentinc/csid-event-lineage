@@ -6,7 +6,6 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
 import static java.util.Collections.singleton;
-import static java.util.Collections.singletonList;
 import static org.awaitility.Awaitility.await;
 
 import io.opentelemetry.sdk.testing.assertj.TracesAssert;
@@ -39,10 +38,9 @@ import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+import org.apache.kafka.connect.storage.StringConverter;
 import org.apache.kafka.connect.tools.VerifiableSinkConnector;
 import org.apache.kafka.connect.tools.VerifiableSinkTask;
-import org.apache.kafka.connect.tools.VerifiableSourceConnector;
-import org.apache.kafka.connect.tools.VerifiableSourceTask;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -83,17 +81,18 @@ public class CommonTestUtils {
     props.put(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers);
     props.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+    props.put(WorkerConfig.HEADER_CONVERTER_CLASS_CONFIG, StringConverter.class.getName());
     props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
         createTempFile(tempDir).getAbsolutePath());
     return props;
   }
 
-  public Properties getSourceTaskProperties(Properties overrides, String topic) {
+  public Properties getSourceTaskProperties(Properties overrides, String topic, Class<?> connectorClass) {
     Properties props = new Properties();
     props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSourceTask1");
-    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, VerifiableSourceConnector.class.getName());
-    props.put(VerifiableSourceTask.TOPIC_CONFIG, topic);
-    props.put(VerifiableSourceTask.THROUGHPUT_CONFIG, "1");
+    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, connectorClass.getName());
+    props.put(VerifiableSourcePairSendingTask.TOPIC_CONFIG, topic);
+    props.put(VerifiableSourcePairSendingTask.THROUGHPUT_CONFIG, "1");
 
     props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
     return props;
@@ -104,7 +103,6 @@ public class CommonTestUtils {
     props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSinkTask1");
     props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, VerifiableSinkConnector.class.getName());
     props.put(VerifiableSinkTask.TOPICS_CONFIG, topic);
-
     props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
     return props;
   }
@@ -207,11 +205,9 @@ public class CommonTestUtils {
     return consumeAtLeastXEvents(keyDeserializerClass, valueDeserializerClass, topic, 1).get(0);
   }
 
-  public static void assertAnyTraceSatisfies(List<List<SpanData>> traces,
-      TraceAssertData... expectations) {
-    TracesAssert.assertThat(traces).anySatisfy(
-        (trace) -> TracesAssert.assertThat(singletonList(trace))
-            .hasTracesSatisfyingExactly(expectations));
+  public static void assertTracesCaptured(List<List<SpanData>> traces, TraceAssertData... expectations) {
+    TracesAssert.assertThat(traces).hasSize(expectations.length)
+        .hasTracesSatisfyingExactly(expectations);
   }
 
   public File createTempFile(File tempDir) {

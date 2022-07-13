@@ -34,6 +34,8 @@ dependencies {
     testImplementation("org.awaitility:awaitility:${versions.awaitility}")
     testImplementation("org.slf4j:slf4j-simple:${versions.slf4j}")
     testImplementation("org.apache.kafka:connect-runtime:${versions.kafka}")
+    testImplementation("org.apache.kafka:kafka-tools:${versions.kafka}")
+
     testImplementation("org.apache.commons:commons-lang3:${versions.apacheCommons3}")
 }
 
