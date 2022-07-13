@@ -59,6 +59,24 @@ public class TracingSessionStore extends
   }
 
   @Override
+  public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFindSessions(Bytes key,
+      long earliestSessionEndTime, long latestSessionStartTime) {
+    KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFindSessions(key,
+        earliestSessionEndTime, latestSessionStartTime);
+    return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
+  }
+
+  @Override
+  public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFindSessions(Bytes keyFrom, Bytes keyTo,
+      long earliestSessionEndTime, long latestSessionStartTime) {
+    KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFindSessions(keyFrom, keyTo,
+        earliestSessionEndTime, latestSessionStartTime);
+    return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
+  }
+
+  @Override
   public byte[] fetchSession(Bytes key, long startTime, long endTime) {
     byte[] bytesValue = wrapped().fetchSession(key, startTime, endTime);
     if (null == bytesValue) {
@@ -93,6 +111,20 @@ public class TracingSessionStore extends
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> fetch(Bytes from, Bytes to) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetch(from, to);
+    return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
+  }
+
+  @Override
+  public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFetch(Bytes key) {
+    KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFetch(key);
+    return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
+  }
+
+  @Override
+  public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFetch(Bytes from, Bytes to) {
+    KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFetch(from, to);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
         openTelemetryWrapper, wrapped().name(), headersAccessor);
   }

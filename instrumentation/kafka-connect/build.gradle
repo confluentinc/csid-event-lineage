@@ -9,6 +9,7 @@ apply from: "$rootDir/gradle/instrumentation.gradle"
 dependencies {
     implementation(project(":instrumentation:kafka-common"))
     compileOnly("org.apache.kafka:connect-api:${versions.kafka}")
+    compileOnly("org.slf4j:slf4j-api:${versions.slf4j}")
 
     implementation("com.fasterxml.jackson.core:jackson-databind:${versions.jackson}")
     implementation("com.fasterxml.jackson.core:jackson-core:${versions.jackson}")
