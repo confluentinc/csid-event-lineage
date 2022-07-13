@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.OkHttpUtils;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
@@ -375,7 +376,7 @@ class IntegrationTest {
 
       Request request =
           new Request.Builder()
-              .url(String.format("http://localhost:%d/get-traces", backend.getMappedPort(8080)))
+              .url(String.format("http://%s:%d/get-traces",backend.getHost(), backend.getMappedPort(8080)))
               .build();
 
       try (ResponseBody body = client.newCall(request).execute().body()) {

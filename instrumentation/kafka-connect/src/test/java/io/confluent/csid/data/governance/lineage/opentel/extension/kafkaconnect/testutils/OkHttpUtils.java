@@ -1,4 +1,4 @@
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
 import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
