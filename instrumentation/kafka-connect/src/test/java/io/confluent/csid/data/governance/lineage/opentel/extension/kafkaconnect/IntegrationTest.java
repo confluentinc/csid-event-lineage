@@ -376,7 +376,8 @@ class IntegrationTest {
 
       Request request =
           new Request.Builder()
-              .url(String.format("http://%s:%d/get-traces",backend.getHost(), backend.getMappedPort(8080)))
+              .url(String.format("http://%s:%d/get-traces", backend.getHost(),
+                  backend.getMappedPort(8080)))
               .build();
 
       try (ResponseBody body = client.newCall(request).execute().body()) {
