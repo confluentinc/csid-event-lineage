@@ -28,6 +28,9 @@ import org.apache.kafka.connect.source.SourceRecord;
  * <p>
  * As the ConnectRecord collection is traversed during task execution - tracing logic in
  * TracingIterator is invoked and "sourceTask" Spans are recorded and headers captured.
+ * <p>
+ * In addition - SourceRecord constructor instrumentation is enabled on start of poll() call and
+ * disabled on completion of it.
  */
 public class ConnectWorkerSourceTaskInstrumentation implements TypeInstrumentation {
 

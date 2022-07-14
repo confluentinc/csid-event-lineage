@@ -37,11 +37,6 @@ dependencies {
     testImplementation("org.apache.commons:commons-lang3:${versions.apacheCommons3}")
 }
 
-test {
-    jvmArgs("-Dotel.instrumentation.kafka.experimental-span-attributes=true")
-    jvmArgs("-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true")
-}
-
 def muzzleVersions = ext.versions
 
 muzzle {

@@ -16,6 +16,15 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 import org.apache.kafka.connect.source.SourceRecord;
 
+/**
+ * SourceRecord constructor instrumentation captures current tracing context and stores it linked
+ * with SourceRecord created by the connector.
+ * <p>
+ * Advice execution is controlled by {@link SourcePollMarkerHolder} flag to only be executed during
+ * SourceTask.poll()
+ *
+ * @see ConnectWorkerSourceTaskInstrumentation
+ */
 public class ConnectSourceRecordInstrumentation implements
     TypeInstrumentation {
 
@@ -31,7 +40,6 @@ public class ConnectSourceRecordInstrumentation implements
    */
   @Override
   public void transform(TypeTransformer transformer) {
-
     transformer.applyAdviceToMethod(
         isConstructor().and(isPublic()).and(takesArguments(10)),
         ConnectSourceRecordInstrumentation.class.getName()
