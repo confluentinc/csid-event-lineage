@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
@@ -105,6 +106,47 @@ public class SinkTaskTracingTest {
     //Expected trace - producer send, consumer process, sink-task
     assertTracesCaptured(traces,
         trace().withSpans(produce(), consume(), sinkTask().withNameContaining(testTopic)
+            .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
+  }
+
+  @SneakyThrows
+  @Test
+  @Tag("DISABLE_PROPAGATION")
+  void testSinkTaskCaptureWithHeaderPropagationAndCaptureWhenInboundMessageHasNoTrace() {
+    ConnectStandalone connectStandalone = new ConnectStandalone(
+        commonTestUtils.getConnectWorkerProperties(),
+        commonTestUtils.getSinkTaskProperties(null, testTopic));
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    new Thread(() -> {
+      connectStandalone.start();
+      try {
+
+        connectLatch.await();
+      } catch (InterruptedException e) {
+      } finally {
+        connectStandalone.stop();
+      }
+    }).start();
+
+    await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(100)).until(
+        connectStandalone::isRunning);
+
+    String key = " {\"schema\":{\"type\":\"int32\",\"optional\":false},\"payload\":0}";
+    String value = "{\"schema\":{\"type\":\"int64\",\"optional\":false},\"payload\":31}";
+
+    commonTestUtils.produceSingleEvent(testTopic, key, value, CAPTURED_PROPAGATED_HEADER);
+
+    await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
+        .until(() -> instrumentation.waitForTraces(2).get(1).size() == 2);
+
+    connectLatch.countDown();
+    connectStandalone.awaitStop();
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(2);
+    //Expected trace - producer send, consumer process, sink-task
+    assertTracesCaptured(traces,
+        trace().withSpans(produce()),
+        trace().withSpans(consume(), sinkTask().withNameContaining(testTopic)
             .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
   }
 }

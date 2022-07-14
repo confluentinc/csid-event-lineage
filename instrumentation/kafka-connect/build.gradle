@@ -2,6 +2,7 @@ plugins {
     id "io.opentelemetry.instrumentation.muzzle-generation"
     id "io.opentelemetry.instrumentation.muzzle-check"
     id "maven-publish"
+    id "java"
 }
 
 apply from: "$rootDir/gradle/instrumentation.gradle"
@@ -38,11 +39,23 @@ dependencies {
 
     testImplementation("org.apache.commons:commons-lang3:${versions.apacheCommons3}")
 }
-
-test {
+task testsWithNoPropagation(type: Test){
+    useJUnitPlatform {
+        includeTags "DISABLE_PROPAGATION"
+    }
+    jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=false")
     jvmArgs("-Dotel.instrumentation.kafka.experimental-span-attributes=true")
     jvmArgs("-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true")
 }
+test {
+    useJUnitPlatform{
+        excludeTags "DISABLE_PROPAGATION"
+    }
+    jvmArgs("-Dotel.instrumentation.kafka.experimental-span-attributes=true")
+    jvmArgs("-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true")
+    dependsOn(testsWithNoPropagation)
+}
+
 
 def muzzleVersions = ext.versions
 
