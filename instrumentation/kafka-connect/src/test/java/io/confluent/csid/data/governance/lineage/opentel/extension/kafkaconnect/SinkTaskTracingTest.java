@@ -92,6 +92,7 @@ public class SinkTaskTracingTest {
 
     String key = " {\"schema\":{\"type\":\"int32\",\"optional\":false},\"payload\":0}";
     String value = "{\"schema\":{\"type\":\"int64\",\"optional\":false},\"payload\":31}";
+
     commonTestUtils.produceSingleEvent(testTopic, key, value, CAPTURED_PROPAGATED_HEADER);
 
     await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))

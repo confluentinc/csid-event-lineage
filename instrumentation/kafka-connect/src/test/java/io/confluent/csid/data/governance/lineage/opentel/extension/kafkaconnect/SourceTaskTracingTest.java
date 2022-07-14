@@ -12,6 +12,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.VerifiableSourceBatchTracedConnector;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.VerifiableSourceConnector;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.VerifiableSourceIndividuallyTracedConnector;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
@@ -115,5 +116,36 @@ public class SourceTaskTracingTest {
             produce(), consume()),
         trace().withSpans(testSourcePollTask(), sourceTask().withNameContaining(testTopic),
             produce(), consume()));
+  }
+  @SneakyThrows
+  @Test
+  void testSourceTaskInheritsSpanFromPollBatched() {
+    ConnectStandalone connectStandalone = new ConnectStandalone(
+        commonTestUtils.getConnectWorkerProperties(),
+        commonTestUtils.getSourceTaskProperties(null, testTopic,
+            VerifiableSourceBatchTracedConnector.class));
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    new Thread(() -> {
+      connectStandalone.start();
+      try {
+
+        connectLatch.await();
+      } catch (InterruptedException e) {
+      } finally {
+        connectStandalone.stop();
+      }
+    }).start();
+    commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
+        testTopic, 2);
+
+    connectLatch.countDown();
+    connectStandalone.awaitStop();
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(1);
+    //Expected trace - test-source-poll followed by 2x - source-task, producer send, consumer process.
+    assertTracesCaptured(traces,
+        trace().withSpans(testSourcePollTask(),
+            sourceTask().withNameContaining(testTopic),  produce(), consume(),
+            sourceTask().withNameContaining(testTopic),  produce(), consume()));
   }
 }

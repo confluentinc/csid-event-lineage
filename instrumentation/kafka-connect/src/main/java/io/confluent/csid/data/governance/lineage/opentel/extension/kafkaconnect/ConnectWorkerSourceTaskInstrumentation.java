@@ -9,6 +9,7 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.SourcePollMarkerHolder;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.TracingCollection;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.TracingList;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
@@ -48,15 +49,22 @@ public class ConnectWorkerSourceTaskInstrumentation implements TypeInstrumentati
             .and(named("poll"))
             .and(takesArguments(0)),
         ConnectWorkerSourceTaskInstrumentation.class.getName()
-            + "$SourceTaskPollAdvice");
+            + "$WorkerSourceTaskPollAdvice");
   }
 
   @SuppressWarnings("unused")
-  public static class SourceTaskPollAdvice {
+  public static class WorkerSourceTaskPollAdvice {
+
+    @Advice.OnMethodEnter(suppress = Throwable.class)
+    public static void onEnter() {
+      //set marker to enable context capture in SourceRecord constructor
+      SourcePollMarkerHolder.enableTracing();
+    }
 
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.Return(readOnly = false) List<SourceRecord> sourceRecords) {
+      SourcePollMarkerHolder.disableTracing();
       if (sourceRecords != null && !sourceRecords.isEmpty()) {
         sourceRecords = new TracingList<>(sourceRecords, SpanNames.SOURCE_TASK);
       }

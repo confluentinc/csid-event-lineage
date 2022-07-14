@@ -13,10 +13,12 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.C
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.instrumentation.api.field.VirtualField;
 import java.util.Iterator;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.source.SourceRecord;
 
 /**
  * Wraps ConnectRecord iterator and executes span creation and header capture logic on "next()"
@@ -31,6 +33,8 @@ public class TracingIterator<T extends ConnectRecord<T>>
   private Scope currentScope;
   private Span currentSpan;
 
+  private final VirtualField<SourceRecord, Context> sourceRecordContextStore;
+
   /**
    * Wraps delegate iterator
    *
@@ -41,6 +45,7 @@ public class TracingIterator<T extends ConnectRecord<T>>
       Iterator<T> delegateIterator, String spanName) {
     this.spanName = spanName;
     this.delegateIterator = delegateIterator;
+    this.sourceRecordContextStore = VirtualField.find(SourceRecord.class, Context.class);
     log.trace("Creating TracingIterator spanName={}, delegate={}", spanName, delegateIterator);
   }
 
@@ -72,17 +77,25 @@ public class TracingIterator<T extends ConnectRecord<T>>
 
   protected void recordSpan(T record) {
     if (record != null) {
-      byte[] traceHeaderValue = Optional.ofNullable(record.headers()).flatMap(
-          headers -> Optional.ofNullable(headers.lastWithName(
-              Constants.TRACING_HEADER))).map(header -> connectHandler().convertHeaderValue(header,
-          headerCaptureConfiguration().getHeaderValueEncoding())).orElse(null);
-      Context parentContext;
-      String traceId = null;
-      if (traceHeaderValue != null) {
-        traceId = new String(traceHeaderValue,
-            headerCaptureConfiguration().getHeaderValueEncoding());
-        parentContext = openTelemetryWrapper().contextFromTraceIdString(traceId);
+      Context parentContext = null;
+      if (record instanceof SourceRecord) {
+        parentContext = sourceRecordContextStore.get((SourceRecord) record);
+        log.trace("SourceRecord={}, parentContext={}", record,
+            parentContext != null ? parentContext : "not found");
       } else {
+        byte[] traceHeaderValue = Optional.ofNullable(record.headers()).flatMap(
+                headers -> Optional.ofNullable(headers.lastWithName(
+                    Constants.TRACING_HEADER)))
+            .map(header -> connectHandler().convertHeaderValue(header,
+                headerCaptureConfiguration().getHeaderValueEncoding())).orElse(null);
+        String traceId = null;
+        if (traceHeaderValue != null) {
+          traceId = new String(traceHeaderValue,
+              headerCaptureConfiguration().getHeaderValueEncoding());
+          parentContext = openTelemetryWrapper().contextFromTraceIdString(traceId);
+        }
+      }
+      if (parentContext == null) {
         parentContext = openTelemetryWrapper().currentContext();
       }
       String topicSpanName = String.format(SpanNames.TASK_SPAN_NAME_FORMAT, record.topic(),
@@ -91,8 +104,8 @@ public class TracingIterator<T extends ConnectRecord<T>>
       currentScope = currentSpan.makeCurrent();
       connectHandler().captureConnectHeadersToCurrentSpan(record.headers(),
           headerCaptureConfiguration().getHeaderValueEncoding());
-      log.trace("Created Span in iterator.next, parentTrace={}",
-          traceId != null ? traceId : "null");
+      log.trace("Created Span in iterator.next, parentContext={}",
+          parentContext);
     }
   }
 
