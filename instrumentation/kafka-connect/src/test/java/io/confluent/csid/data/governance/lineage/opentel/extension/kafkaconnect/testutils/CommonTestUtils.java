@@ -42,6 +42,7 @@ import org.apache.kafka.connect.storage.StringConverter;
 import org.apache.kafka.connect.tools.VerifiableSinkConnector;
 import org.apache.kafka.connect.tools.VerifiableSinkTask;
 import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
@@ -52,7 +53,9 @@ public class CommonTestUtils {
 
   private static final String CONNECT_TEMP_FILE = "connect_temp_file";
 
-  private final File tempDir;
+  public static final Network DOCKER_NETWORK = Network.newNetwork();
+
+  private final String tempDir;
 
   private String kafkaBootstrapServers = "dummy";
   private KafkaContainer kafkaContainer;
@@ -61,6 +64,8 @@ public class CommonTestUtils {
     if (kafkaContainer == null) {
       kafkaContainer = new KafkaContainer(
           DockerImageName.parse("confluentinc/cp-kafka:" + KAFKA_CONTAINER_VERSION))
+          .withNetworkAliases("kafka")
+          .withNetwork(DOCKER_NETWORK)
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS", "1")
@@ -210,7 +215,7 @@ public class CommonTestUtils {
         .hasTracesSatisfyingExactly(expectations);
   }
 
-  public File createTempFile(File tempDir) {
+  public File createTempFile(String tempDir) {
     return new File(tempDir, CONNECT_TEMP_FILE);
   }
 }

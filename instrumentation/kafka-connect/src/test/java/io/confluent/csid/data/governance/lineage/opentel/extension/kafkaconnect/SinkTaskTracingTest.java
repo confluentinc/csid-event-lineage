@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -55,7 +54,7 @@ public class SinkTaskTracingTest {
   @BeforeEach
   void setup() {
     testTopic = "test-topic-" + UUID.randomUUID();
-    commonTestUtils = new CommonTestUtils(tempDir);
+    commonTestUtils = new CommonTestUtils(tempDir.getAbsolutePath());
     commonTestUtils.startKafkaContainer();
   }
 
@@ -76,17 +75,8 @@ public class SinkTaskTracingTest {
     ConnectStandalone connectStandalone = new ConnectStandalone(
         commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSinkTaskProperties(null, testTopic));
-    CountDownLatch connectLatch = new CountDownLatch(1);
-    new Thread(() -> {
-      connectStandalone.start();
-      try {
 
-        connectLatch.await();
-      } catch (InterruptedException e) {
-      } finally {
-        connectStandalone.stop();
-      }
-    }).start();
+    connectStandalone.start();
 
     await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(100)).until(
         connectStandalone::isRunning);
@@ -99,8 +89,7 @@ public class SinkTaskTracingTest {
     await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
         .until(() -> instrumentation.waitForTraces(1).get(0).size() == 3);
 
-    connectLatch.countDown();
-    connectStandalone.awaitStop();
+    connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
@@ -116,17 +105,7 @@ public class SinkTaskTracingTest {
     ConnectStandalone connectStandalone = new ConnectStandalone(
         commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSinkTaskProperties(null, testTopic));
-    CountDownLatch connectLatch = new CountDownLatch(1);
-    new Thread(() -> {
-      connectStandalone.start();
-      try {
-
-        connectLatch.await();
-      } catch (InterruptedException e) {
-      } finally {
-        connectStandalone.stop();
-      }
-    }).start();
+    connectStandalone.start();
 
     await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(100)).until(
         connectStandalone::isRunning);
@@ -139,8 +118,7 @@ public class SinkTaskTracingTest {
     await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
         .until(() -> instrumentation.waitForTraces(2).get(1).size() == 2);
 
-    connectLatch.countDown();
-    connectStandalone.awaitStop();
+    connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(2);
     //Expected trace - producer send, consumer process, sink-task

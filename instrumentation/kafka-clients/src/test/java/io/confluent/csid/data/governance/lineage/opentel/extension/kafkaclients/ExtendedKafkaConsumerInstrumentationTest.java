@@ -83,6 +83,19 @@ public class ExtendedKafkaConsumerInstrumentationTest {
     assertTracesCaptured(traces, trace().withSpans(produce(), consume()));
   }
 
+  @Test
+  @DisplayName("Test consumer process span records a Trace with consume span using ListIterator")
+  void testConsumerProcessSpanSimpleWithList() {
+    String key = "key";
+    String value = "value";
+
+    commonTestUtils.produceSingleEvent(testTopic, key, value);
+    commonTestUtils.consumeEventsAsList(testTopic, 1, (record) -> {
+    });
+    List<List<SpanData>> traces = instrumentation.waitForTraces(1);
+    assertTracesCaptured(traces, trace().withSpans(produce(), consume()));
+  }
+
   @SneakyThrows
   @Test
   @DisplayName("Test consumer process span records a Trace with consume span and captures only whitelisted headers")

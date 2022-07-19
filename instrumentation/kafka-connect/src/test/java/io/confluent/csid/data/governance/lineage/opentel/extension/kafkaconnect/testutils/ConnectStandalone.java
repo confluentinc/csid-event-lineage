@@ -9,6 +9,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.utils.Time;
@@ -50,8 +51,35 @@ public class ConnectStandalone {
   private Connect connect;
   private final Properties workerProperties;
   private final Properties connectorProperties;
+  private CountDownLatch controlLatch;
 
   public void start() {
+    controlLatch = new CountDownLatch(1);
+    new Thread(() -> {
+      this.startInstance();
+      try {
+        controlLatch.await();
+      } catch (InterruptedException e) {
+      } finally {
+        this.stopInstance();
+      }
+    }).start();
+  }
+
+  public void stop() {
+    controlLatch.countDown();
+    awaitStop();
+  }
+
+  public boolean isRunning() {
+    return connect != null && connect.isRunning();
+  }
+
+  public void awaitStop() {
+    await().atMost(Duration.ofSeconds(5)).until(() -> !isRunning());
+  }
+
+  private void startInstance() {
 
     try {
       Time time = Time.SYSTEM;
@@ -123,21 +151,13 @@ public class ConnectStandalone {
     }
   }
 
-  public void stop() {
+  private void stopInstance() {
     try {
       if (connect != null && connect.isRunning()) {
         connect.stop();
       }
     } catch (Exception e) {
     } // suppressed
-  }
-
-  public boolean isRunning() {
-    return connect != null && connect.isRunning();
-  }
-
-  public void awaitStop() {
-    await().atMost(Duration.ofSeconds(5)).until(() -> !isRunning());
   }
 }
 

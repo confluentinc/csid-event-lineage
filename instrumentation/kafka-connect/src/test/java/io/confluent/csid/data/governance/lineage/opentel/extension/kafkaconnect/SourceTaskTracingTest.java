@@ -20,7 +20,6 @@ import io.opentelemetry.sdk.trace.data.SpanData;
 import java.io.File;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import lombok.SneakyThrows;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
@@ -44,7 +43,7 @@ public class SourceTaskTracingTest {
   @BeforeEach
   void setup() {
     testTopic = "test-topic-" + UUID.randomUUID();
-    commonTestUtils = new CommonTestUtils(tempDir);
+    commonTestUtils = new CommonTestUtils(tempDir.getAbsolutePath());
     commonTestUtils.startKafkaContainer();
   }
 
@@ -60,22 +59,12 @@ public class SourceTaskTracingTest {
     ConnectStandalone connectStandalone = new ConnectStandalone(
         commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSourceTaskProperties(null, testTopic, VerifiableSourceConnector.class));
-    CountDownLatch connectLatch = new CountDownLatch(1);
-    new Thread(() -> {
-      connectStandalone.start();
-      try {
+    connectStandalone.start();
 
-        connectLatch.await();
-      } catch (InterruptedException e) {
-      } finally {
-        connectStandalone.stop();
-      }
-    }).start();
     commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
         testTopic, 2);
 
-    connectLatch.countDown();
-    connectStandalone.awaitStop();
+    connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(2);
     //Expected trace - source-task, producer send, consumer process.
@@ -92,22 +81,12 @@ public class SourceTaskTracingTest {
         commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSourceTaskProperties(null, testTopic,
             VerifiableSourceIndividuallyTracedConnector.class));
-    CountDownLatch connectLatch = new CountDownLatch(1);
-    new Thread(() -> {
-      connectStandalone.start();
-      try {
+    connectStandalone.start();
 
-        connectLatch.await();
-      } catch (InterruptedException e) {
-      } finally {
-        connectStandalone.stop();
-      }
-    }).start();
     commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
         testTopic, 2);
 
-    connectLatch.countDown();
-    connectStandalone.awaitStop();
+    connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(2);
     //Expected trace - test-source-poll, source-task, producer send, consumer process.
@@ -117,6 +96,7 @@ public class SourceTaskTracingTest {
         trace().withSpans(testSourcePollTask(), sourceTask().withNameContaining(testTopic),
             produce(), consume()));
   }
+
   @SneakyThrows
   @Test
   void testSourceTaskInheritsSpanFromPollBatched() {
@@ -124,28 +104,19 @@ public class SourceTaskTracingTest {
         commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSourceTaskProperties(null, testTopic,
             VerifiableSourceBatchTracedConnector.class));
-    CountDownLatch connectLatch = new CountDownLatch(1);
-    new Thread(() -> {
-      connectStandalone.start();
-      try {
 
-        connectLatch.await();
-      } catch (InterruptedException e) {
-      } finally {
-        connectStandalone.stop();
-      }
-    }).start();
+    connectStandalone.start();
+
     commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
         testTopic, 2);
 
-    connectLatch.countDown();
-    connectStandalone.awaitStop();
+    connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - test-source-poll followed by 2x - source-task, producer send, consumer process.
     assertTracesCaptured(traces,
         trace().withSpans(testSourcePollTask(),
-            sourceTask().withNameContaining(testTopic),  produce(), consume(),
-            sourceTask().withNameContaining(testTopic),  produce(), consume()));
+            sourceTask().withNameContaining(testTopic), produce(), consume(),
+            sourceTask().withNameContaining(testTopic), produce(), consume()));
   }
 }
