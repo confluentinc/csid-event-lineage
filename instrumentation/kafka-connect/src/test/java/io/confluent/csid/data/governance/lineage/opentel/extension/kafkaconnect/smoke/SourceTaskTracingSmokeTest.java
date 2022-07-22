@@ -3,6 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.IntegrationTestBase.Connectors.SOURCE_CONNECTOR_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
@@ -49,6 +50,10 @@ public class SourceTaskTracingSmokeTest extends IntegrationTestBase {
     assertThat(expectedTrace.size()).as("Unexpected span as part of %s, %s trace.",
             SOURCE_TASK_NAME, SEND_TASK_NAME)
         .isEqualTo(2);
+
+    //Both spans should have service.name Resource attribute = Connector name
+    expectedTrace.forEach(
+        resourceSpanPair -> assertServiceName(resourceSpanPair, SOURCE_CONNECTOR_NAME));
   }
 
 

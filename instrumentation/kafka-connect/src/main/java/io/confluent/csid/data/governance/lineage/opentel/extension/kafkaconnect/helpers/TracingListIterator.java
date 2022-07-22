@@ -28,10 +28,11 @@ public class TracingListIterator<T extends ConnectRecord<T>> extends TracingIter
   private final ListIterator<T> delegateIterator;
 
   public TracingListIterator(
-      ListIterator<T> delegateIterator, String spanName) {
-    super(delegateIterator, spanName);
+      ListIterator<T> delegateIterator, String spanName, String connectorId) {
+    super(delegateIterator, spanName, connectorId);
     this.delegateIterator = delegateIterator;
-    log.trace("Creating TracingListIterator spanName={}, delegate={}", spanName, delegateIterator);
+    log.trace("Creating TracingListIterator spanName={}, delegate={}, connectorId={}", spanName,
+        delegateIterator, connectorId);
   }
 
 

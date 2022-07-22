@@ -50,7 +50,8 @@ public final class KafkaConnectInstrumentationModule extends InstrumentationModu
         new ConnectSinkTaskInstrumentation(),
         new ConnectWorkerSourceTaskInstrumentation(),
         new ConnectWorkerSinkTaskInstrumentation(),
-        new ConnectSourceRecordInstrumentation()
+        new ConnectSourceRecordInstrumentation(),
+        new ConnectWorkerTaskInstrumentation()
     );
   }
 

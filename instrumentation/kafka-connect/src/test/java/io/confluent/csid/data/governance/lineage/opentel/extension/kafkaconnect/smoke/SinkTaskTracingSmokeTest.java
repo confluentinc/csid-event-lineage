@@ -3,6 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.IntegrationTestBase.Connectors.SINK_CONNECTOR_NAME;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER_2;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,5 +73,9 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
         resourceSpanPair -> assertSpanAttribute(resourceSpanPair.getRight(),
             "headers." + CAPTURED_PROPAGATED_HEADER.key(),
             new String(CAPTURED_PROPAGATED_HEADER.value(), charset)));
+
+    //All 3 spans should have service.name Resource attribute = Connector name
+    expectedTrace.forEach(
+        resourceSpanPair -> assertServiceName(resourceSpanPair, SINK_CONNECTOR_NAME));
   }
 }

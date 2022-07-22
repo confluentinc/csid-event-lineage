@@ -3,6 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SERVICE_NAME_KEY;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.DOCKER_NETWORK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -13,6 +14,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
 import java.io.IOException;
@@ -48,6 +50,8 @@ abstract class IntegrationTestBase {
     public static String SOURCE_WITH_SMT = "source_with_smt.properties";
     public static String SINK_WITH_SMT = "sink_with_smt.properties";
 
+    public static String SINK_CONNECTOR_NAME = "VerifiableSinkTask1";
+    public static String SOURCE_CONNECTOR_NAME = "VerifiableSourceTask1";
   }
 
 
@@ -282,17 +286,28 @@ abstract class IntegrationTestBase {
     return expectedTrace;
   }
 
-  String spanAttributeValue(Span span, String attributeKey) {
-    return span.getAttributesList().stream().filter(attr -> attr.getKey().equals(attributeKey))
+  String attributeValue(List<KeyValue> attributeList, String attributeKey) {
+    return attributeList.stream().filter(attr -> attr.getKey().equals(attributeKey))
         .findAny().map(kv -> kv.getValue().getStringValue()).orElse(null);
   }
 
   void assertSpanAttribute(Span span, String attributeKey, String attributeValue) {
     assertThat(
-        spanAttributeValue(span, attributeKey)).as(
+        attributeValue(span.getAttributesList(), attributeKey)).as(
             "Assertion failed for Span header key=%s, spanName=%s, spanId=%s", attributeKey,
             span.getName(),
             span.getSpanId().toStringUtf8())
         .isEqualTo(attributeValue);
+  }
+
+  protected void assertServiceName(Pair<Resource, Span> resourceSpanPair,
+      String expectedServiceName) {
+    String serviceNameResourceAttributeValue = attributeValue(
+        resourceSpanPair.getLeft().getAttributesList(), SERVICE_NAME_KEY.getKey());
+    assertThat(serviceNameResourceAttributeValue).isNotNull();
+    assertThat(serviceNameResourceAttributeValue).as(
+            "Unexpected service.name resource attribute value of %s, for trace %s",
+            serviceNameResourceAttributeValue, resourceSpanPair.toString())
+        .isEqualTo(expectedServiceName);
   }
 }
