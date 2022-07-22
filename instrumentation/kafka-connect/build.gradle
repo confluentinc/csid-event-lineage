@@ -64,6 +64,7 @@ task unitTests(type: Test) {
     }
     filter {
         excludeTestsMatching("*.smoke.*")
+        setFailOnNoMatchingTests(false)
     }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=true")
     mustRunAfter(testsWithNoPropagation)
@@ -75,6 +76,7 @@ task smokeTests(type: Test){
     useJUnitPlatform()
     filter {
         includeTestsMatching("*.smoke.*")
+        setFailOnNoMatchingTests(false)
     }
     mustRunAfter(unitTests)
 }
@@ -83,6 +85,7 @@ test {
     useJUnitPlatform()
     filter {
         includeTestsMatching("dummyfilter")
+        setFailOnNoMatchingTests(false)
     }
     mustRunAfter(smokeTests)
 }
