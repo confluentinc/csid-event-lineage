@@ -110,7 +110,7 @@ abstract class IntegrationTestBase {
         .withNetwork(DOCKER_NETWORK)
         .withNetworkAliases("connect")
         .withLogConsumer(new Slf4jLogConsumer(log))
-        .withCopyFileToContainer(MountableFile.forClasspathResource("runscript", 777),
+        .withCopyFileToContainer(MountableFile.forClasspathResource("runscript", 0777),
             "/usr/share/runscript")
         .withCopyFileToContainer(MountableFile.forClasspathResource("launch"),
             "/usr/share/launch")
