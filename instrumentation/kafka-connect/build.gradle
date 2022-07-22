@@ -70,10 +70,7 @@ task unitTests(type: Test) {
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=true")
     mustRunAfter(testsWithNoPropagation)
 }
-
-test {
-    dependsOn(unitTests, testsWithNoPropagation)
-
+task smokeTests(type: Test){
     configure { task ->
         setupSmokeTests(task)
     }
@@ -82,6 +79,14 @@ test {
         includeTestsMatching("*.smoke.*")
     }
     mustRunAfter(unitTests)
+}
+test {
+    dependsOn(smokeTests, unitTests, testsWithNoPropagation)
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("dummyfilter")
+    }
+    mustRunAfter(smokeTests)
 }
 
 
