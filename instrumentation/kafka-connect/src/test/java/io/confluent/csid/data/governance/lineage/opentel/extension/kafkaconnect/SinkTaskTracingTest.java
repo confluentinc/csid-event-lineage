@@ -10,6 +10,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.consume;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.produce;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.sinkTask;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.DISABLE_PROPAGATION_UT_TAG;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TraceAssertData.trace;
 import static org.awaitility.Awaitility.await;
 
@@ -109,9 +110,14 @@ public class SinkTaskTracingTest {
             .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
   }
 
+  /**
+   * Test scenario when consumed message has no tracing context header.
+   *
+   * @see TestConstants.DISABLE_PROPAGATION_UT_TAG
+   */
   @SneakyThrows
   @Test
-  @Tag("DISABLE_PROPAGATION")
+  @Tag(DISABLE_PROPAGATION_UT_TAG)
   void testSinkTaskCaptureWithHeaderPropagationAndCaptureWhenInboundMessageHasNoTrace() {
     ConnectStandalone connectStandalone = new ConnectStandalone(
         commonTestUtils.getConnectWorkerProperties(),
