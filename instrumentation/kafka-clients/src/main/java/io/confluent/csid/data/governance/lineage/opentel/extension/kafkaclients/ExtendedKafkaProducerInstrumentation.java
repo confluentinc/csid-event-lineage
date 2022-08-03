@@ -68,7 +68,7 @@ public class ExtendedKafkaProducerInstrumentation implements TypeInstrumentation
         @Advice.Argument(value = 1, readOnly = false) Callback callback) {
 
       //Skip all the header processing for changelog send operations
-      if(producerRecord.topic().endsWith("-changelog")){
+      if (producerRecord.topic().endsWith("-changelog")) {
         return;
       }
       //If there are stored headers from Consumer - set them on record (not overwriting any that already set)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Confluent Inc.
+ * Copyright 2022 Confluent Inc.
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 

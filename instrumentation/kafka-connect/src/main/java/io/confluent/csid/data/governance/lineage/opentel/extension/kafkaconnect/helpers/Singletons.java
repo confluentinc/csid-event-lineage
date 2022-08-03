@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Confluent Inc.
+ * Copyright 2022 Confluent Inc.
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers;
 
@@ -11,7 +11,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.S
 import lombok.experimental.UtilityClass;
 
 /**
- * Singleton instances used by Kafka Clients instrumentation extension
+ * Singleton instances used by Kafka Connect instrumentation extension
  */
 @UtilityClass
 public class Singletons {
@@ -60,5 +60,4 @@ public class Singletons {
         || className.startsWith(
         "io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.");
   }
-
 }

@@ -1,5 +1,6 @@
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHolder;
 import java.util.function.Supplier;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.utils.Bytes;
@@ -9,7 +10,7 @@ import org.apache.kafka.streams.state.internals.WrappedStateStore;
 /**
  * Base class for Tracing State Store wrappers providing common behavior.
  *
- * @param <T>
+ * @param <T> Type of StateStore
  */
 public class BaseTracingStore<T extends StateStore> extends
     WrappedStateStore<T, Bytes, byte[]> {

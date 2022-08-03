@@ -11,8 +11,8 @@ import io.opentelemetry.context.propagation.TextMapPropagator;
 
 
 /**
- * Handles retrieval of TraceId from String parsed from StateStore stored value. See {@link
- * TextMapPropagator} and {@link TextMapGetter}
+ * Handles retrieval of TraceId from String parsed from StateStore stored value. See
+ * {@link TextMapPropagator} and {@link TextMapGetter}
  */
 public class StringTextMapGetter implements TextMapGetter<String> {
 

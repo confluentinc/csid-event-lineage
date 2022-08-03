@@ -94,8 +94,8 @@ public class StateStorePropagationHelpers {
    * value length is stored after magic bytes. Optionally read at offset for situations when
    * timestamp is prepended to the byte array.
    *
-   * @param value  byte[] value with prepended trace data as constructed by {@link
-   *               #attachTracingInformation}
+   * @param value  byte[] value with prepended trace data as constructed by
+   *               {@link #attachTracingInformation}
    * @param offset offset from start of byte[] - when trace data and value are prepended with
    *               timestamp
    * @return length of original value.

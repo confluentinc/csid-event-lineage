@@ -9,7 +9,6 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.H
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.SpanHandler;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ValueAndTimestampHandler;
 import lombok.experimental.UtilityClass;
 
 /**

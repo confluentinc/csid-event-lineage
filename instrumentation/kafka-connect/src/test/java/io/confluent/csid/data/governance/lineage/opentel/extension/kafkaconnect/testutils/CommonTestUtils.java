@@ -6,10 +6,12 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
 import static java.util.Collections.singleton;
+import static java.util.Collections.singletonList;
 import static org.awaitility.Awaitility.await;
 
 import io.opentelemetry.sdk.testing.assertj.TracesAssert;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import java.io.File;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +21,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -32,26 +35,38 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+import org.apache.kafka.connect.tools.VerifiableSinkConnector;
+import org.apache.kafka.connect.tools.VerifiableSinkTask;
+import org.apache.kafka.connect.tools.VerifiableSourceConnector;
 import org.apache.kafka.connect.tools.VerifiableSourceTask;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
+@RequiredArgsConstructor
 public class CommonTestUtils {
+
+  private static final String KAFKA_CONTAINER_VERSION = "7.0.1";
+
+  private static final String CONNECT_TEMP_FILE = "connect_temp_file";
+
+  private final File tempDir;
 
   private String kafkaBootstrapServers = "dummy";
   private KafkaContainer kafkaContainer;
 
   public void startKafkaContainer() {
     if (kafkaContainer == null) {
-      kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.0.1"))
+      kafkaContainer = new KafkaContainer(
+          DockerImageName.parse("confluentinc/cp-kafka:" + KAFKA_CONTAINER_VERSION))
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
           .withEnv("KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS", "1")
-          .withEnv("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "500").withReuse(true);
+          .withEnv("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "500").withReuse(false);
     }
     kafkaContainer.start();
     kafkaBootstrapServers = kafkaContainer.getBootstrapServers();
@@ -63,30 +78,45 @@ public class CommonTestUtils {
     }
   }
 
-  public Properties getConnectWorkerProperties(Properties overrides) {
+  public Properties getConnectWorkerProperties() {
     Properties props = new Properties();
     props.put(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrapServers);
-    props.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, "JsonConverter");
-    props.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, "JsonConverter");
-    props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, "/tmp/connect");
-    props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
+    props.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+    props.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+    props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
+        createTempFile(tempDir).getAbsolutePath());
     return props;
   }
 
   public Properties getSourceTaskProperties(Properties overrides, String topic) {
     Properties props = new Properties();
     props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSourceTask1");
-    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG,
-        "org.apache.kafka.connect.tools.VerifiableSourceConnector");
+    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, VerifiableSourceConnector.class.getName());
     props.put(VerifiableSourceTask.TOPIC_CONFIG, topic);
     props.put(VerifiableSourceTask.THROUGHPUT_CONFIG, "1");
+
+    props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
+    return props;
+  }
+
+  public Properties getSinkTaskProperties(Properties overrides, String topic) {
+    Properties props = new Properties();
+    props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSinkTask1");
+    props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, VerifiableSinkConnector.class.getName());
+    props.put(VerifiableSinkTask.TOPICS_CONFIG, topic);
+
+    props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
+    return props;
+  }
+
+  public Properties getHeaderInjectTrasnformProperties() {
+    Properties props = new Properties();
+
     props.put("transforms", "insertHeader");
-    props.put("transforms.insertHeader.type",
-        "io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.InsertHeaderBytes");
+    props.put("transforms.insertHeader.type", InsertHeaderBytes.class.getName());
     props.put("transforms.insertHeader.header", CAPTURED_PROPAGATED_HEADER.key());
     props.put("transforms.insertHeader.value.literal",
         new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8));
-    props.putAll(Optional.ofNullable(overrides).orElse(new Properties()));
     return props;
   }
 
@@ -177,9 +207,14 @@ public class CommonTestUtils {
     return consumeAtLeastXEvents(keyDeserializerClass, valueDeserializerClass, topic, 1).get(0);
   }
 
-  public static void assertTracesCaptured(List<List<SpanData>> traces,
+  public static void assertAnyTraceSatisfies(List<List<SpanData>> traces,
       TraceAssertData... expectations) {
-    TracesAssert.assertThat(traces).hasSize(expectations.length)
-        .hasTracesSatisfyingExactly(expectations);
+    TracesAssert.assertThat(traces).anySatisfy(
+        (trace) -> TracesAssert.assertThat(singletonList(trace))
+            .hasTracesSatisfyingExactly(expectations));
+  }
+
+  public File createTempFile(File tempDir) {
+    return new File(tempDir, CONNECT_TEMP_FILE);
   }
 }
