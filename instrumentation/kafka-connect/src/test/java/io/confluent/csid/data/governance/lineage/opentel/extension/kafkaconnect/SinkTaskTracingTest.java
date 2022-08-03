@@ -97,8 +97,7 @@ public class SinkTaskTracingTest {
 
     commonTestUtils.produceSingleEvent(testTopic, key, value, CAPTURED_PROPAGATED_HEADER);
 
-    await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
-        .until(() -> instrumentation.waitForTraces(1).get(0).size() == 3);
+    commonTestUtils.waitUntil(() -> instrumentation.waitForTraces(1).get(0).size() == 3);
 
     connectLatch.countDown();
     connectStandalone.awaitStop();
@@ -142,8 +141,7 @@ public class SinkTaskTracingTest {
 
     commonTestUtils.produceSingleEvent(testTopic, key, value, CAPTURED_PROPAGATED_HEADER);
 
-    await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
-        .until(() -> instrumentation.waitForTraces(2).get(1).size() == 2);
+    commonTestUtils.waitUntil(() -> instrumentation.waitForTraces(2).get(1).size() == 2);
 
     connectLatch.countDown();
     connectStandalone.awaitStop();

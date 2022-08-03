@@ -5,6 +5,9 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.CONSUME_AWAIT_TIMEOUT;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.DEFAULT_AWAIT_TIMEOUT;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.POLL_INTERVAL;
 import static java.util.Collections.singleton;
 import static org.awaitility.Awaitility.await;
 
@@ -19,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -87,7 +91,8 @@ public class CommonTestUtils {
     return props;
   }
 
-  public Properties getSourceTaskProperties(Properties overrides, String topic, Class<?> connectorClass) {
+  public Properties getSourceTaskProperties(Properties overrides, String topic,
+      Class<?> connectorClass) {
     Properties props = new Properties();
     props.put(ConnectorConfig.NAME_CONFIG, "VerifiableSourceTask1");
     props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, connectorClass.getName());
@@ -178,7 +183,7 @@ public class CommonTestUtils {
       overrides.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializerClass);
       KafkaConsumer consumer = new KafkaConsumer(getKafkaProperties(overrides));
       consumer.subscribe(singleton(topic));
-      await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(200)).until(() -> {
+      await().atMost(CONSUME_AWAIT_TIMEOUT).pollInterval(Duration.ofMillis(200)).until(() -> {
         ConsumerRecords records = consumer.poll(Duration.ofMillis(200));
         Iterator<ConsumerRecord> recordIterator = records.iterator();
         while (recordIterator.hasNext()) {
@@ -205,12 +210,17 @@ public class CommonTestUtils {
     return consumeAtLeastXEvents(keyDeserializerClass, valueDeserializerClass, topic, 1).get(0);
   }
 
-  public static void assertTracesCaptured(List<List<SpanData>> traces, TraceAssertData... expectations) {
+  public static void assertTracesCaptured(List<List<SpanData>> traces,
+      TraceAssertData... expectations) {
     TracesAssert.assertThat(traces).hasSize(expectations.length)
         .hasTracesSatisfyingExactly(expectations);
   }
 
   public File createTempFile(File tempDir) {
     return new File(tempDir, CONNECT_TEMP_FILE);
+  }
+
+  public void waitUntil(Supplier<Boolean> condition) {
+    await().atMost(DEFAULT_AWAIT_TIMEOUT).pollInterval(POLL_INTERVAL).until(condition::get);
   }
 }
