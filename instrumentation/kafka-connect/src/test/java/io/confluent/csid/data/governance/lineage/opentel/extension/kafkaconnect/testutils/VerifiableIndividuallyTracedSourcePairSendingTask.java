@@ -1,18 +1,5 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2022 Confluent Inc.
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
@@ -29,15 +16,16 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 
 /**
- * A connector primarily intended for system tests. The connector simply generates as many tasks as
- * requested. The tasks print metadata in the form of JSON to stdout for each message generated,
- * making externally visible which messages have been sent. Each message is also assigned a unique,
- * increasing seqno that is passed to Kafka Connect; when tasks are started on new nodes, this seqno
- * is used to resume where the task previously left off, allowing for testing of distributed Kafka
- * Connect.
+ * Extension of {@link VerifiableSourcePairSendingTask} - sends 2 events on first poll and empty
+ * results on subsequent polls to reduce unnecessary trace / span noise in tests.
  * <p>
- * If logging is left enabled, log output on stdout can be easily ignored by checking whether a
- * given line is valid JSON.
+ * Additionally, creates Span per each record created during poll() execution.
+ * <p>
+ * That behaviour simulates Source Connector with tracing support on per message basis - for example
+ * Connect Replicator.
+ *
+ * @see VerifiableSourcePairSendingTask
+ * @see VerifiableSourceIndividuallyTracedConnector
  */
 public class VerifiableIndividuallyTracedSourcePairSendingTask extends
     VerifiableSourcePairSendingTask {
@@ -45,6 +33,12 @@ public class VerifiableIndividuallyTracedSourcePairSendingTask extends
   public static final String SPAN_NAME = "test-source-process";
 
 
+  /**
+   * main method of the Source Task - on first call - generates and returns 2 events, on subsequent
+   * calls returns empty result list to reduce unnecessary trace / span noise in tests.
+   * <p>
+   * Creates new trace and span per each returned event.
+   */
   @Override
   //Generate 2 message at a time for testing
   public List<SourceRecord> poll() throws InterruptedException {
@@ -56,8 +50,9 @@ public class VerifiableIndividuallyTracedSourcePairSendingTask extends
     if (sent) {
       return result;
     }
-    for (int i = 0; i < 2; i++) {
-      //Simulating source task that has span created per individual record creation - for example ConsumerRecords iteration in Replicator.
+    for (int i = 0; i < NUMBER_OF_EVENTS_TO_GENERATE; i++) {
+      //Simulating source task that has span created per individual record creation - for example
+      //ConsumerRecords iteration in Replicator.
       SpanBuilder spanBuilder = GlobalOpenTelemetry
           .getTracer("test-instrumentation")
           .spanBuilder(SPAN_NAME)

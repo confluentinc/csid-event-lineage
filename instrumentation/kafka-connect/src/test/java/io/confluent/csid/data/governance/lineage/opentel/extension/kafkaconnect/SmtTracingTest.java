@@ -108,8 +108,7 @@ public class SmtTracingTest {
     String value = "{\"schema\":{\"type\":\"int64\",\"optional\":false},\"payload\":31}";
     commonTestUtils.produceSingleEvent(testTopic, key, value);
 
-    await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
-        .until(() -> instrumentation.waitForTraces(1).get(0).size() == 4);
+    commonTestUtils.waitUntil(() -> instrumentation.waitForTraces(1).get(0).size() == 4);
 
     connectStandalone.stop();
 
