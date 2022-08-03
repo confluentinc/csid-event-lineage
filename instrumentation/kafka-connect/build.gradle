@@ -39,20 +39,35 @@ dependencies {
 
     testImplementation("org.apache.commons:commons-lang3:${versions.apacheCommons3}")
 }
-task testsWithNoPropagation(type: Test){
+
+task testsWithNoPropagation(type: Test) {
     useJUnitPlatform {
         includeTags "DISABLE_PROPAGATION"
     }
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=false")
 }
-test {
-    useJUnitPlatform{
+task unitTests(type: Test) {
+    useJUnitPlatform {
         excludeTags "DISABLE_PROPAGATION"
     }
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=true")
-    dependsOn(testsWithNoPropagation)
+    mustRunAfter(testsWithNoPropagation)
 }
-
+test {
+    dependsOn(unitTests, testsWithNoPropagation)
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("dummyfilter")
+        setFailOnNoMatchingTests(false)
+    }
+    mustRunAfter(unitTests)
+}
 
 def muzzleVersions = ext.versions
 
