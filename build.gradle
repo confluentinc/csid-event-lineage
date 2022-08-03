@@ -73,6 +73,7 @@ subprojects {
                 awaitility                 : "4.1.1",
                 lombok                     : "1.18.22",
                 logback                    : "1.2.3",
+                apacheCommons3             : "3.12.0",
                 slf4j                      : "1.7.36"
         ]
 

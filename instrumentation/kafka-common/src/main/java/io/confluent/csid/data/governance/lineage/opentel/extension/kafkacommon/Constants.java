@@ -8,7 +8,9 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class Constants {
 
-  public static final String INSTRUMENTATION_NAME = "io.opentelemetry.kafka-streams-2.6";
+  public static final String INSTRUMENTATION_NAME_KAFKA_STREAMS = "io.opentelemetry.kafka-streams-2.6";
+  public static final String INSTRUMENTATION_NAME_KAFKA_CLIENTS = "io.opentelemetry.kafka-clients-0.11";
+
   public static final String HEADER_ATTRIBUTE_PREFIX = "headers.";
   /**
    * Opentelemetry trace header name
@@ -33,6 +35,12 @@ public class Constants {
    */
   public class SpanNames {
 
+
+    public static final String SMT= "SMT";
+    /**
+     * Span name format - "SMT smt-name" - i.e. "SMT HeaderExtractor"
+     */
+    public static final String SMT_SPAN_NAME_FORMAT = "%s %s";
     /**
      * Span name format - "operation state-store-name" - i.e. "state-store-get
      * value-aggregate-store"
