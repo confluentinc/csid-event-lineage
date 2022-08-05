@@ -35,6 +35,8 @@ public class HeaderCapturingIterator<K, V> implements Iterator<ConsumerRecord<K,
    * @param delegate generic ConsumerRecord iterator to wrap
    * @param <K>      ConsumerRecord Key type
    * @param <V>      ConsumerRecord Value type
+   * @param serviceMetadata metadata that we want to pass through into the iterators for capturing
+   *                        in spans created
    * @return {@link HeaderCapturingIterator}
    */
   public static <K, V> Iterator<ConsumerRecord<K, V>> wrap(

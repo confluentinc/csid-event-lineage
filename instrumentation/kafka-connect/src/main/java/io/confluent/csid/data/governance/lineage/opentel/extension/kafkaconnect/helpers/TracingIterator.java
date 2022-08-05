@@ -42,6 +42,7 @@ public class TracingIterator<T extends ConnectRecord<T>>
    *
    * @param delegateIterator iterator to wrap
    * @param spanName         Span name for creating new spans on next() call.
+   * @param connectorId      connectorId - used for service name overriding during span creation
    */
   public TracingIterator(
       Iterator<T> delegateIterator, String spanName, String connectorId) {

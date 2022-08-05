@@ -155,7 +155,7 @@ public class TraceAssertUtils {
   static void assertSpanHasAttribute(Span span, String attributeKey, String expectedAttributeValue) {
     assertThat(
         getAttributeValueByKey(span.getAttributesList(), attributeKey)).as(
-            "Assertion failed for Span header key=%s, spanName=%s, spanId=%s", attributeKey,
+            "Assertion failed for Span attribute key=%s, spanName=%s, spanId=%s", attributeKey,
             span.getName(),
             span.getSpanId().toStringUtf8())
         .isEqualTo(expectedAttributeValue);
