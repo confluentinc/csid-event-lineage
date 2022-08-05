@@ -1,5 +1,6 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SERVICE_NAME_KEY;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
 import java.io.IOException;
@@ -145,17 +147,28 @@ public class TraceAssertUtils {
     return expectedTrace;
   }
 
-  static String spanAttributeValue(Span span, String attributeKey) {
-    return span.getAttributesList().stream().filter(attr -> attr.getKey().equals(attributeKey))
+  private static String getAttributeValueByKey(List<KeyValue> attributeList, String attributeKey) {
+    return attributeList.stream().filter(attr -> attr.getKey().equals(attributeKey))
         .findAny().map(kv -> kv.getValue().getStringValue()).orElse(null);
   }
 
-  static void assertSpanAttribute(Span span, String attributeKey, String attributeValue) {
+  static void assertSpanHasAttribute(Span span, String attributeKey, String expectedAttributeValue) {
     assertThat(
-        spanAttributeValue(span, attributeKey)).as(
+        getAttributeValueByKey(span.getAttributesList(), attributeKey)).as(
             "Assertion failed for Span header key=%s, spanName=%s, spanId=%s", attributeKey,
             span.getName(),
             span.getSpanId().toStringUtf8())
-        .isEqualTo(attributeValue);
+        .isEqualTo(expectedAttributeValue);
+  }
+
+  static void assertSpanHasExpectedServiceName(Pair<Resource, Span> resourceSpanPair,
+      String expectedServiceName) {
+    String serviceNameResourceAttributeValue = getAttributeValueByKey(
+        resourceSpanPair.getLeft().getAttributesList(), SERVICE_NAME_KEY.getKey());
+    assertThat(serviceNameResourceAttributeValue).isNotNull();
+    assertThat(serviceNameResourceAttributeValue).as(
+            "Unexpected service.name resource attribute value of %s, for trace %s",
+            serviceNameResourceAttributeValue, resourceSpanPair.toString())
+        .isEqualTo(expectedServiceName);
   }
 }

@@ -4,10 +4,12 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.IntegrationTestBase.Connectors.SINK_CONNECTOR_NAME;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanAttribute;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedServiceName;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasAttribute;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER_2;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.DEFAULT_TIMEOUT_SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
@@ -60,7 +62,7 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
 
     //All 3 spans should have header sent by producer captured / propagated
     expectedTrace.forEach(
-        resourceSpanPair -> assertSpanAttribute(resourceSpanPair.getRight(),
+        resourceSpanPair -> assertSpanHasAttribute(resourceSpanPair.getRight(),
             "headers." + CAPTURED_PROPAGATED_HEADER_2.key(),
             new String(CAPTURED_PROPAGATED_HEADER_2.value(), CHARSET_UTF_8)));
 
@@ -68,12 +70,12 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
     List<Pair<Resource, Span>> smtAndSinkSpans = traceAssertUtils.filterSpansBySpanNames(expectedTrace,
         SMT_TASK_NAME, SINK_TASK_NAME);
     smtAndSinkSpans.forEach(
-        resourceSpanPair -> assertSpanAttribute(resourceSpanPair.getRight(),
+        resourceSpanPair -> assertSpanHasAttribute(resourceSpanPair.getRight(),
             "headers." + CAPTURED_PROPAGATED_HEADER.key(),
             new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8)));
 
     //All 3 spans should have service.name Resource attribute = Connector name
     expectedTrace.forEach(
-        resourceSpanPair -> assertServiceName(resourceSpanPair, SINK_CONNECTOR_NAME));
+        resourceSpanPair -> assertSpanHasExpectedServiceName(resourceSpanPair, SINK_CONNECTOR_NAME));
   }
 }

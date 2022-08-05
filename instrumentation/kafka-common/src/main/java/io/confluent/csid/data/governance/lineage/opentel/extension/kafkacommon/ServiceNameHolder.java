@@ -6,13 +6,17 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
 import lombok.Value;
 
 /**
- * Service name holder used to enable service name overriding in multi service applications (for
+ * Service name holder used to enable service name overriding in multi-service applications (for
  * example Kafka Connect)
  * <p>
  * Service name stored into holder at high level service / thread bound operation and extracted
- * later appropriate span processing stage - for example in consumer record iteration. Suggested use
- * with context propagation customizer to set service name once per record flow - set on first local
- * span creation and propagate through all the local child spans.
+ * later at appropriate span processing stage - for example in consumer record iteration. Suggested
+ * use with context propagation customizer to set service name once per record flow - set on first
+ * local span creation and propagate through all the local child spans.
+ * <p>
+ * Applications that require it - for example Connect - can use that Service Name to overwrite
+ * Resource Service Name attribute. See ConnectAutoConfigurationCustomizerProvider and
+ * DelegatingSpanExporter in kafka-connect module.
  */
 @Value
 public class ServiceNameHolder {

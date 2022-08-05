@@ -3,16 +3,11 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SERVICE_NAME_KEY;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.DOCKER_NETWORK;
-import static org.assertj.core.api.Assertions.assertThat;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
-import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.trace.v1.Span;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.Pair;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -158,16 +153,5 @@ abstract class IntegrationTestBase {
 
   private void stopCollectorContainer() {
     backend.stop();
-  }
-
-  protected void assertServiceName(Pair<Resource, Span> resourceSpanPair,
-      String expectedServiceName) {
-    String serviceNameResourceAttributeValue = attributeValue(
-        resourceSpanPair.getLeft().getAttributesList(), SERVICE_NAME_KEY.getKey());
-    assertThat(serviceNameResourceAttributeValue).isNotNull();
-    assertThat(serviceNameResourceAttributeValue).as(
-            "Unexpected service.name resource attribute value of %s, for trace %s",
-            serviceNameResourceAttributeValue, resourceSpanPair.toString())
-        .isEqualTo(expectedServiceName);
   }
 }
