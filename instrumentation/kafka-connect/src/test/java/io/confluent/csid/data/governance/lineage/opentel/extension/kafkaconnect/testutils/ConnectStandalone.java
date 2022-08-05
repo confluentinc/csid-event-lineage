@@ -3,10 +3,10 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.CONNECT_STOP_TIMEOUT;
 import static org.awaitility.Awaitility.await;
 
 import java.net.URI;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -76,7 +76,7 @@ public class ConnectStandalone {
   }
 
   public void awaitStop() {
-    await().atMost(Duration.ofSeconds(5)).until(() -> !isRunning());
+    await().atMost(CONNECT_STOP_TIMEOUT).until(() -> !isRunning());
   }
 
   private void startInstance() {
