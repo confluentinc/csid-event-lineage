@@ -2,6 +2,7 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SERVICE_NAME_KEY;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.ConnectAutoConfigurationCustomizerProvider;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.resources.Resource;
@@ -11,6 +12,13 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+/**
+ * Enables overwriting Resource attributes when span is exported. Generally Resource attributes are
+ * set at Span creation in specific restricted way and are read-only - so this approach has to be
+ * used when there is need to set Resource attribute value more flexibly.
+ * <p>
+ * Configured by {@link ConnectAutoConfigurationCustomizerProvider}
+ */
 public class DelegatingSpanExporter implements SpanExporter {
 
   private final SpanExporter delegate;

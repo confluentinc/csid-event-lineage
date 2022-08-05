@@ -9,26 +9,21 @@ import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeaderCaptureConfiguration;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceNameHolder;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 
+;
+
 /**
- * Kafka Producer instrumentation adds {@link KafkaProducer#send} advice that handles header
- * propagation and capture.
- * <p>
- * Checks whether headers are captured for propagation in the ThreadLocal holder and adds them to
- * produced record using configured whitelist
- * {@link HeaderCaptureConfiguration#getHeaderPropagationWhitelist()}
- * <p>
- * Captures set of headers into Span attributes using configured whitelist
- * {@link HeaderCaptureConfiguration#getHeaderCaptureWhitelist()}
+ * Instrumentation for sub-classes of {@link org.apache.kafka.connect.runtime.WorkerTask} class -
+ * advice for {@link org.apache.kafka.connect.runtime.WorkerTask#execute()} method capturing
+ * Connector name for storing into ThreadLocal {@link ServiceNameHolder} and for subsequent service
+ * name overriding.
  */
 public class ConnectWorkerTaskInstrumentation implements TypeInstrumentation {
 

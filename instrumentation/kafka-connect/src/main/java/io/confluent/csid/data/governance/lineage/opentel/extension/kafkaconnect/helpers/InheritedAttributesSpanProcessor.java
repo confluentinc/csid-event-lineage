@@ -9,6 +9,13 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import java.util.List;
 
+/**
+ * Span attribute processor that copies configured attributes from parent span (if one exist in
+ * current application context).
+ * <p>
+ * Useful for attribute propagation through span chain - for example SMT spans inherit service name
+ * attribute from Sink / Source task spans using this propagation.
+ */
 public class InheritedAttributesSpanProcessor implements SpanProcessor {
 
   private final List<AttributeKey<String>> inheritAttributeKeys;

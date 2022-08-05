@@ -7,6 +7,12 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
 
+/**
+ * Configuration customizer for OpenTelemetry autoconfiguration
+ * <p>
+ * Allows to customize span processing pipeline by configuring custom span processors, exporters
+ * etc.
+ */
 @AutoService(AutoConfigurationCustomizerProvider.class)
 public class ConnectAutoConfigurationCustomizerProvider implements
     AutoConfigurationCustomizerProvider {
