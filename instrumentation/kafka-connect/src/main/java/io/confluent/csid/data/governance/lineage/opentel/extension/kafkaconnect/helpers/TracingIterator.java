@@ -51,7 +51,7 @@ public class TracingIterator<T extends ConnectRecord<T>>
     this.delegateIterator = delegateIterator;
     this.sinkRecordContextStore = VirtualField.find(SinkRecord.class, Context.class);
     this.sourceRecordContextStore = VirtualField.find(SourceRecord.class, Context.class);
-    log.trace("Creating TracingIterator spanName={}, delegate={}, connectorId", spanName,
+    log.trace("Creating TracingIterator spanName={}, delegate={}, connectorId={}", spanName,
         delegateIterator, connectorId);
   }
 
