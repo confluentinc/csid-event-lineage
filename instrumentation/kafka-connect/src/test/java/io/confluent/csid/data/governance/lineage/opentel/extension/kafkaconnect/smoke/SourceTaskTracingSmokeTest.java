@@ -42,7 +42,7 @@ public class SourceTaskTracingSmokeTest extends IntegrationTestBase {
         testTopic, 1);
 
     //Looking for trace with sourceTask -> send task spans.
-    List<Pair<Resource, Span>> expectedTrace = findTraceBySpanNamesWithinTimeout(10,
+    List<Pair<Resource, Span>> expectedTrace = traceAssertUtils.findTraceBySpanNamesWithinTimeout(DEFAULT_TIMEOUT_SECONDS,
         SOURCE_TASK_NAME, SEND_TASK_NAME);
     assertThat(expectedTrace).as("Could not find trace with %s, %s spans.", SOURCE_TASK_NAME,
             SEND_TASK_NAME)

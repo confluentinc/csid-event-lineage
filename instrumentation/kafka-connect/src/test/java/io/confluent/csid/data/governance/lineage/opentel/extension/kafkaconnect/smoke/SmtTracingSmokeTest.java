@@ -4,14 +4,14 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.IntegrationTestBase.Connectors.SOURCE_CONNECTOR_NAME;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanAttribute;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 
 public class SmtTracingSmokeTest extends IntegrationTestBase {
 
-  private final Charset charset = StandardCharsets.UTF_8;
   private final String SOURCE_TASK_NAME = String.format(SpanNames.TASK_SPAN_NAME_FORMAT, testTopic,
       SpanNames.SOURCE_TASK);
 
@@ -49,7 +48,7 @@ public class SmtTracingSmokeTest extends IntegrationTestBase {
         testTopic, 1);
 
     //Looking for trace with source, smt, send spans.
-    List<Pair<Resource, Span>> expectedTrace = findTraceBySpanNamesWithinTimeout(10,
+    List<Pair<Resource, Span>> expectedTrace = traceAssertUtils.findTraceBySpanNamesWithinTimeout(DEFAULT_TIMEOUT_SECONDS,
         SOURCE_TASK_NAME, SMT_TASK_NAME, SEND_TASK_NAME);
 
     assertThat(expectedTrace).as("Could not find trace with %s, %s, %s spans.", SOURCE_TASK_NAME,
@@ -61,13 +60,13 @@ public class SmtTracingSmokeTest extends IntegrationTestBase {
 
     //Check that SMT span and Producer Send span has headers captured / propagated.
     //Source task won't have that header as it's injected by SMT.
-    List<Pair<Resource, Span>> spansWithHeaders = filterSpansBySpanNames(expectedTrace,
+    List<Pair<Resource, Span>> spansWithHeaders = traceAssertUtils.filterSpansBySpanNames(expectedTrace,
         SMT_TASK_NAME, SEND_TASK_NAME);
     assertThat(spansWithHeaders.size()).as("Expected 2 spans - SMT and Send").isEqualTo(2);
     spansWithHeaders.forEach(
         resourceSpanPair -> assertSpanAttribute(resourceSpanPair.getRight(),
             "headers." + CAPTURED_PROPAGATED_HEADER.key(),
-            new String(CAPTURED_PROPAGATED_HEADER.value(), charset)));
+            new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8)));
 
     //All 3 spans should have service.name Resource attribute = Connector name
     expectedTrace.forEach(
