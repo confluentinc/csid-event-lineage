@@ -3,15 +3,16 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanAttribute;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER_2;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.DEFAULT_TIMEOUT_SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
@@ -27,8 +28,6 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
       SpanNames.CONSUMER_PROCESS);
   private final String SMT_TASK_NAME = String.format(SpanNames.SMT_SPAN_NAME_FORMAT, SpanNames.SMT,
       transformClassName);
-
-  private final Charset charset = StandardCharsets.UTF_8;
 
   @BeforeEach
   void setup() {
@@ -49,7 +48,7 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
     commonTestUtils.produceSingleEvent(testTopic, key, value, CAPTURED_PROPAGATED_HEADER_2);
 
     //Looking for trace with consumer process, smt, sink spans.
-    List<Pair<Resource, Span>> expectedTrace = findTraceBySpanNamesWithinTimeout(10,
+    List<Pair<Resource, Span>> expectedTrace = traceAssertUtils.findTraceBySpanNamesWithinTimeout(DEFAULT_TIMEOUT_SECONDS,
         CONSUMER_PROCESS_TASK_NAME, SMT_TASK_NAME, SINK_TASK_NAME);
 
     assertThat(expectedTrace).as("Could not find trace with %s, %s, %s spans.",
@@ -63,14 +62,14 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
     expectedTrace.forEach(
         resourceSpanPair -> assertSpanAttribute(resourceSpanPair.getRight(),
             "headers." + CAPTURED_PROPAGATED_HEADER_2.key(),
-            new String(CAPTURED_PROPAGATED_HEADER_2.value(), charset)));
+            new String(CAPTURED_PROPAGATED_HEADER_2.value(), CHARSET_UTF_8)));
 
     //SMT and SINK spans should have header set by SMT captured / propagated
-    List<Pair<Resource, Span>> smtAndSinkSpans = filterSpansBySpanNames(expectedTrace,
+    List<Pair<Resource, Span>> smtAndSinkSpans = traceAssertUtils.filterSpansBySpanNames(expectedTrace,
         SMT_TASK_NAME, SINK_TASK_NAME);
     smtAndSinkSpans.forEach(
         resourceSpanPair -> assertSpanAttribute(resourceSpanPair.getRight(),
             "headers." + CAPTURED_PROPAGATED_HEADER.key(),
-            new String(CAPTURED_PROPAGATED_HEADER.value(), charset)));
+            new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8)));
   }
 }

@@ -19,7 +19,10 @@ public class TestConstants {
 
   public static class TIMEOUTS {
 
-    public static final Duration DEFAULT_AWAIT_TIMEOUT = Duration.ofSeconds(15);
+    public static final Integer LATCH_TIMEOUT_SECONDS = 120;
+    public static final Integer DEFAULT_TIMEOUT_SECONDS = 15;
+    public static final Duration DEFAULT_AWAIT_TIMEOUT = Duration.ofSeconds(
+        DEFAULT_TIMEOUT_SECONDS);
     public static final Duration CONSUME_AWAIT_TIMEOUT = Duration.ofSeconds(30);
     public static final Duration CONNECT_STOP_TIMEOUT = Duration.ofSeconds(5);
     public static final Duration POLL_INTERVAL = Duration.ofMillis(100);
