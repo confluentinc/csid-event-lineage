@@ -9,7 +9,6 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.Singletons.spanHandler;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceMetadata;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
@@ -103,7 +102,7 @@ public class TracingIterator<T extends ConnectRecord<T>>
           spanName);
       currentSpan = spanHandler().createAndStartSpan(topicSpanName, parentContext);
       currentScope = currentSpan.makeCurrent();
-      spanHandler().captureServiceMetadataToSpan(new ServiceMetadata(connectorId));
+      spanHandler().captureServiceNameToCurrentSpan(connectorId);
       connectHandler().captureConnectHeadersToCurrentSpan(record.headers(),
           headerCaptureConfiguration().getHeaderValueEncoding());
       log.trace("Created Span in iterator.next, parentContext={}",

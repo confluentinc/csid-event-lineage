@@ -4,11 +4,13 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.headersHandler;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.spanHandler;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPackagePrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.returns;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ClusterIdHolder;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHolder;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -24,7 +26,7 @@ import org.apache.kafka.streams.processor.internals.StampedRecord;
  * Store configured headers in {@link HeadersHolder}  for automatic propagation on produce.
  * <p>
  * Capture header key/values as Span attributes according to configured whitelist. Headers are
- * captured according to configured  as is (as byte[] values) and recorded to consume span assuming
+ * captured according to configured as is (as byte[] values) and recorded to consume span assuming
  * String values.
  * <p>
  * {@link PartitionGroup#nextRecord} advice in OpenTelemetry kafka-streams instrumentation starts
@@ -61,6 +63,7 @@ public class PartitionGroupInstrumentation implements TypeInstrumentation {
         headersHandler().storeHeadersForPropagation(record.headers());
         headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
             record.headers().toArray());
+        spanHandler().captureClusterIdToCurrentSpan(ClusterIdHolder.get());
       } else {
         HeadersHolder.clear();
       }

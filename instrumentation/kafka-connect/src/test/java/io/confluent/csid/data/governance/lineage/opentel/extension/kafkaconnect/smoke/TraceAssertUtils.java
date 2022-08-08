@@ -1,5 +1,6 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.CLUSTER_ID_KEY;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SERVICE_NAME_KEY;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -152,7 +153,8 @@ public class TraceAssertUtils {
         .findAny().map(kv -> kv.getValue().getStringValue()).orElse(null);
   }
 
-  static void assertSpanHasAttribute(Span span, String attributeKey, String expectedAttributeValue) {
+  static void assertSpanHasAttribute(Span span, String attributeKey,
+      String expectedAttributeValue) {
     assertThat(
         getAttributeValueByKey(span.getAttributesList(), attributeKey)).as(
             "Assertion failed for Span attribute key=%s, spanName=%s, spanId=%s", attributeKey,
@@ -161,14 +163,39 @@ public class TraceAssertUtils {
         .isEqualTo(expectedAttributeValue);
   }
 
+  static void assertSpanHasExpectedResourceAttribute(Pair<Resource, Span> resourceSpanPair,
+      String attributeKey,
+      String expectedAttributeValue) {
+    String resourceAttributeValue = getAttributeValueByKey(
+        resourceSpanPair.getLeft().getAttributesList(), attributeKey);
+    assertThat(resourceAttributeValue).isNotNull();
+    assertThat(resourceAttributeValue).as(
+            "Unexpected %s resource attribute value of %s, for trace %s", attributeKey,
+            resourceAttributeValue, resourceSpanPair.toString())
+        .isEqualTo(expectedAttributeValue);
+  }
+
+  static void assertSpanHasExpectedAttribute(Pair<Resource, Span> resourceSpanPair,
+      String attributeKey,
+      String expectedAttributeValue) {
+    String attributeValue = getAttributeValueByKey(resourceSpanPair.getRight().getAttributesList(),
+        attributeKey);
+    assertThat(attributeValue).isNotNull();
+    assertThat(attributeValue).as(
+            "Unexpected %s attribute value of %s, for trace %s", attributeKey,
+            attributeValue, resourceSpanPair.toString())
+        .isEqualTo(expectedAttributeValue);
+  }
+
   static void assertSpanHasExpectedServiceName(Pair<Resource, Span> resourceSpanPair,
       String expectedServiceName) {
-    String serviceNameResourceAttributeValue = getAttributeValueByKey(
-        resourceSpanPair.getLeft().getAttributesList(), SERVICE_NAME_KEY.getKey());
-    assertThat(serviceNameResourceAttributeValue).isNotNull();
-    assertThat(serviceNameResourceAttributeValue).as(
-            "Unexpected service.name resource attribute value of %s, for trace %s",
-            serviceNameResourceAttributeValue, resourceSpanPair.toString())
-        .isEqualTo(expectedServiceName);
+    assertSpanHasExpectedResourceAttribute(resourceSpanPair, SERVICE_NAME_KEY.getKey(),
+        expectedServiceName);
+  }
+
+  static void assertSpanHasExpectedClusterId(Pair<Resource, Span> resourceSpanPair,
+      String expectedClusterId) {
+    assertSpanHasExpectedAttribute(resourceSpanPair, CLUSTER_ID_KEY.getKey(),
+        expectedClusterId);
   }
 }

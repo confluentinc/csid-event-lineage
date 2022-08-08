@@ -1,6 +1,5 @@
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
@@ -19,9 +18,12 @@ import java.util.List;
 public class InheritedAttributesSpanProcessor implements SpanProcessor {
 
   private final List<AttributeKey<String>> inheritAttributeKeys;
+  private final List<AttributeKey<String>> inheritAttributeNoOverwriteKeys;
 
-  public InheritedAttributesSpanProcessor() {
-    this.inheritAttributeKeys = List.of(Constants.SERVICE_NAME_KEY);
+  public InheritedAttributesSpanProcessor(List<AttributeKey<String>> inheritAttributeKeys,
+      List<AttributeKey<String>> inheritAttributeNoOverwriteKeys) {
+    this.inheritAttributeKeys = inheritAttributeKeys;
+    this.inheritAttributeNoOverwriteKeys = inheritAttributeNoOverwriteKeys;
   }
 
   @Override
@@ -33,11 +35,20 @@ public class InheritedAttributesSpanProcessor implements SpanProcessor {
     if (!(parentSpan instanceof ReadableSpan)) {
       return;
     }
-    ReadableSpan parentReadableSpan = (ReadableSpan) parentSpan;
+    if (parentSpan.getSpanContext().isRemote()) {
+      return;
+    }
 
+    ReadableSpan parentReadableSpan = (ReadableSpan) parentSpan;
     for (AttributeKey<String> inheritAttributeKey : inheritAttributeKeys) {
       String value = parentReadableSpan.getAttribute(inheritAttributeKey);
       if (value != null) {
+        span.setAttribute(inheritAttributeKey, value);
+      }
+    }
+    for (AttributeKey<String> inheritAttributeKey : inheritAttributeNoOverwriteKeys) {
+      String value = parentReadableSpan.getAttribute(inheritAttributeKey);
+      if (value != null && span.getAttribute(inheritAttributeKey) == null) {
         span.setAttribute(inheritAttributeKey, value);
       }
     }

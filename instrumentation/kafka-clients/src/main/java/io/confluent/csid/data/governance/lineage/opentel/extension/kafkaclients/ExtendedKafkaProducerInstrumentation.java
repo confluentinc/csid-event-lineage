@@ -6,6 +6,7 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.headerCaptureConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.headersHandler;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.openTelemetryWrapper;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons.spanHandler;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.named;
@@ -22,6 +23,7 @@ import net.bytebuddy.matcher.ElementMatcher;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.internals.ProducerMetadata;
 import org.apache.kafka.common.header.Header;
 
 /**
@@ -65,7 +67,8 @@ public class ExtendedKafkaProducerInstrumentation implements TypeInstrumentation
     @Advice.OnMethodEnter(suppress = Throwable.class)
     public static void onEnter(
         @Advice.Argument(value = 0, readOnly = false) ProducerRecord<?, ?> producerRecord,
-        @Advice.Argument(value = 1, readOnly = false) Callback callback) {
+        @Advice.Argument(value = 1, readOnly = false) Callback callback,
+        @Advice.FieldValue("metadata") ProducerMetadata metadata) {
 
       //Skip all the header processing for changelog send operations
       if (producerRecord.topic().endsWith("-changelog")) {
@@ -82,6 +85,7 @@ public class ExtendedKafkaProducerInstrumentation implements TypeInstrumentation
       //Capture headers configured for capture to span
       headersHandler().captureWhitelistedHeadersAsAttributesToCurrentSpan(
           producerRecord.headers().toArray());
+      spanHandler().captureClusterIdToCurrentSpan(metadata.fetch().clusterResource().clusterId());
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)

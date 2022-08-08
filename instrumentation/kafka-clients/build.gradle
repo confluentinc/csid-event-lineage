@@ -12,6 +12,7 @@ dependencies {
     compileOnly("org.apache.kafka:kafka-clients:${versions.kafka}")
     compileOnly("io.opentelemetry.javaagent:opentelemetry-javaagent:${versions.opentelemetryJavaagent}")
     compileOnly("org.slf4j:slf4j-api:${versions.slf4j}")
+    compileOnly("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi:${versions.opentelemetry}")
 
     implementation("io.opentelemetry.javaagent.instrumentation:opentelemetry-javaagent-kafka-clients-0.11:${versions.opentelemetryJavaagentAlpha}")
 
