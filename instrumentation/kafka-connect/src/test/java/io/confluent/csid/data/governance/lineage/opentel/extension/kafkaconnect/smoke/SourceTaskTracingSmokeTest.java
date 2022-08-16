@@ -30,7 +30,7 @@ public class SourceTaskTracingSmokeTest extends IntegrationTestBase {
   @BeforeEach
   void setup() {
     super.setup();
-    startConnectContainer(Connectors.SOURCE_NO_SMT);
+    startStandaloneConnectContainer(Connectors.SOURCE_NO_SMT);
   }
 
   @AfterEach

@@ -1,0 +1,2 @@
+cp /usr/share/props/* /etc/confluent/docker/
+/etc/confluent/docker/run

@@ -58,7 +58,8 @@ public final class KafkaClientsConsumerInstrumentationModule extends Instrumenta
   public List<TypeInstrumentation> typeInstrumentations() {
     return asList(
         new ExtendedKafkaConsumerRecordIteratorInstrumentation(),
-        new ExtendedKafkaConsumerInstrumentation()
+        new ExtendedKafkaConsumerInstrumentation(),
+        new ConsumerInterceptorInstrumentation()
     );
   }
 
