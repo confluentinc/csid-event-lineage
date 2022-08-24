@@ -34,7 +34,7 @@ public class InterceptorHandler {
    */
   public boolean interceptorShouldBeSuppressed(String interceptorClassName) {
     Set<String> interceptorSuppressionBlacklist = spanSuppressionConfiguration.getInterceptorSuppressionBlacklist();
-    log.info("interceptorShouldBeSuppressed start, interceptorName={}, blacklist={}",
+    log.debug("interceptorShouldBeSuppressed start, interceptorName={}, blacklist={}",
         interceptorClassName, interceptorSuppressionBlacklist);
 
     if (interceptorSuppressionBlacklist.isEmpty()) {

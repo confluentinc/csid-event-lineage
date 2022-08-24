@@ -9,6 +9,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.C
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.SpanSuppressionConfiguration;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.Span;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Properties;
 import java.util.Set;
@@ -17,6 +18,7 @@ import lombok.SneakyThrows;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,10 +36,12 @@ public class DistributedConnectSpanSuppressionSmokeTest extends IntegrationTestB
   void setup() {
     super.setup();
     Properties suppressionProperties = new Properties();
-    suppressionProperties.setProperty(SpanSuppressionConfiguration.SPAN_SUPPRESSION_BLACKLIST_PROP,"connect-status,connect-configs");
-    suppressionProperties.setProperty("otel.instrumentation.jetty.enabled","false");
-    suppressionProperties.setProperty("otel.instrumentation.servlet.enabled","false");
-    suppressionProperties.setProperty("otel.instrumentation.common.experimental.suppress-controller-spans","true");
+    suppressionProperties.setProperty(SpanSuppressionConfiguration.SPAN_SUPPRESSION_BLACKLIST_PROP,
+        "connect-status,connect-configs");
+    suppressionProperties.setProperty("otel.instrumentation.jetty.enabled", "false");
+    suppressionProperties.setProperty("otel.instrumentation.servlet.enabled", "false");
+    suppressionProperties.setProperty(
+        "otel.instrumentation.common.experimental.suppress-controller-spans", "true");
     startDistributedConnectContainer(suppressionProperties);
   }
 
@@ -49,7 +53,7 @@ public class DistributedConnectSpanSuppressionSmokeTest extends IntegrationTestB
   @SneakyThrows
   @Test
   void testConfiguredSpansAreSuppressedUsingDistributedConnectAndSourceTask() {
-    callConnect();
+    submitConnector();
     commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
         testTopic, 5);
     Collection<ExportTraceServiceRequest> traces = traceAssertUtils.waitForTraces();
@@ -64,8 +68,17 @@ public class DistributedConnectSpanSuppressionSmokeTest extends IntegrationTestB
         Collectors.toSet());
   }
 
-  @SneakyThrows
-  private void callConnect() {
+  private void submitConnector() {
+    commonTestUtils.waitUntil(() -> {
+      try {
+        return sumbitConnectorInternal();
+      } catch (IOException e) {
+        return false;
+      }
+    });
+  }
+
+  private boolean sumbitConnectorInternal() throws IOException {
     String jsonRequest = "{"
         + "  \"name\": \"VerifiableSourceConnector1\","
         + "  \"config\": {"
@@ -74,9 +87,11 @@ public class DistributedConnectSpanSuppressionSmokeTest extends IntegrationTestB
         + "    \"throughput\": \"1\""
         + "  }"
         + "}";
-    OkHttpUtils.client().newCall(new Request.Builder().url(
+    try (Response response = OkHttpUtils.client().newCall(new Request.Builder().url(
                 "http://localhost:" + connectContainer.getMappedPort(28382) + "/connectors")
             .post(RequestBody.create(MediaType.get("application/json"), jsonRequest)).build())
-        .execute();
+        .execute()) {
+      return response.isSuccessful();
+    }
   }
 }
