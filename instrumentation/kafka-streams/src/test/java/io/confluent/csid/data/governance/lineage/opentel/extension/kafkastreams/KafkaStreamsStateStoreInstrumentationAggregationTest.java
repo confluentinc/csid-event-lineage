@@ -33,7 +33,9 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.SessionWindows;
 import org.apache.kafka.streams.state.KeyValueStore;
@@ -151,6 +153,8 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
   }
 
 
+
+
   @Test
   @DisplayName("Test KStream header capture with state store operation (GroupByKey -> Aggregate) using legacy KeyValueStore")
   void testKStreamStateStoreHeaderCaptureWithAggregateOpUsingLegacyStateStore() {
@@ -230,7 +234,8 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
         .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Properties properties = commonTestUtils.getPropertiesForStreams();
     kafkaStreams = new KafkaStreams(streamsBuilder.build(), properties);
-    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic, outputTopic);
+    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
+        outputTopic);
 
     commonTestUtils.produceSingleEvent(inputTopic, key, "1", sentHeaders);
 
@@ -307,5 +312,72 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
             produce(),
             consume())
     );
+  }
+
+  @Test
+  @DisplayName("Test KStream header capture with state store operation (GroupBy -> Count Aggregate) with caching enabled")
+  void testKStreamStateStoreHeaderCaptureWithAggregateAndCaching() {
+    String key = "key";
+    String value = "test data";
+
+    Header[] sentHeaders = ArrayUtils.addAll(
+        CAPTURE_WHITELISTED_HEADERS, NOT_WHITELISTED_HEADERS);
+
+    Properties properties = commonTestUtils.getPropertiesForStreams();
+    final StreamsBuilder builder = new StreamsBuilder();
+    final KStream<String, String> textLines = builder.stream(inputTopic,
+        Consumed.with(Serdes.String(), Serdes.String()));
+
+    KStream<String, Long> wordCount = textLines
+        .flatMapValues(val -> List.of(val.toLowerCase().split(" ")))
+        .groupBy((k, val) -> val)
+        .count(Materialized.as("WordCount"))
+        .toStream();
+    wordCount.print(Printed.toSysOut());
+    wordCount.to(outputTopic, Produced.with(Serdes.String(), Serdes.Long()));
+
+    kafkaStreams = new KafkaStreams(builder.build(), properties);
+    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
+        outputTopic);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key+"1", value, sentHeaders);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key+"2", value);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key+"1", value);
+
+    commonTestUtils.consumeEvent(Serdes.String().deserializer().getClass(),
+        Serdes.Long().deserializer().getClass(), outputTopic);
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(1);
+    assertTracesCaptured(traces,
+        trace().withSpans(
+            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStorePut().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produceChangelog(),
+            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
+        trace().withSpans(
+            produce(),
+            consume(),
+            stateStoreGet().withLink(),
+            stateStorePut(),
+            produceChangelog(),
+            produce(),
+            consume()),
+        trace().withSpans(
+            produce(),
+            consume(),
+            stateStoreGet().withLink(),
+            stateStorePut(),
+            produceChangelog(),
+            produce(),
+            consume()));
   }
 }
