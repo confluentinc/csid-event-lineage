@@ -15,6 +15,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+@Slf4j
 public class DistributedConnectSpanSuppressionSmokeTest extends IntegrationTestBase {
 
   private String testTopic = "connect-topic";
@@ -69,10 +71,11 @@ public class DistributedConnectSpanSuppressionSmokeTest extends IntegrationTestB
   }
 
   private void submitConnector() {
-    commonTestUtils.waitUntil(() -> {
+    commonTestUtils.waitUntil("Submit connector", () -> {
       try {
         return sumbitConnectorInternal();
       } catch (IOException e) {
+        log.warn("Failed to submit connector", e);
         return false;
       }
     });
