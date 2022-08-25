@@ -183,7 +183,7 @@ public class CommonTestUtils {
 
   public String getClusterId() {
     final String[] clusterId = new String[1];
-    waitUntil(
+    waitUntil("Get cluster id",
         () -> {
           try {
             clusterId[0] = getClusterIdInternal();
