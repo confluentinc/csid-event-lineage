@@ -90,8 +90,9 @@ public class DistributedConnectSpanSuppressionSmokeTest extends IntegrationTestB
         + "    \"throughput\": \"1\""
         + "  }"
         + "}";
-    try (Response response = OkHttpUtils.client().newCall(new Request.Builder().url(
-                "http://localhost:" + connectContainer.getMappedPort(28382) + "/connectors")
+    try (Response response = OkHttpUtils.client().newCall(new Request.Builder().url(String.format(
+                "http://%s:%d/connectors", connectContainer.getHost(),
+                connectContainer.getMappedPort(28382)))
             .post(RequestBody.create(MediaType.get("application/json"), jsonRequest)).build())
         .execute()) {
       return response.isSuccessful();
