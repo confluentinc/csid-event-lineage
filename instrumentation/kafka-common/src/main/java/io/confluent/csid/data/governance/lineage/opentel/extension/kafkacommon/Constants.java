@@ -76,6 +76,9 @@ public class Constants {
      */
     public static final String STATE_STORE_DELETE = "state-store-delete";
 
+    public static final String STATE_STORE_FLUSH = "state-store-flush";
+
+
     public static String PRODUCE_CONSUME_TASK_FORMAT = "%s %s";
     public static final String PRODUCER_SEND = "send";
 

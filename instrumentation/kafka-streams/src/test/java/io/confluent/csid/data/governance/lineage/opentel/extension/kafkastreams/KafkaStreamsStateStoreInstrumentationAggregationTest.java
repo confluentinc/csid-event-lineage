@@ -32,6 +32,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Materialized;
@@ -324,6 +325,7 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
         CAPTURE_WHITELISTED_HEADERS, NOT_WHITELISTED_HEADERS);
 
     Properties properties = commonTestUtils.getPropertiesForStreams();
+    properties.setProperty(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "20000"); // re-enable state-store cache
     final StreamsBuilder builder = new StreamsBuilder();
     final KStream<String, String> textLines = builder.stream(inputTopic,
         Consumed.with(Serdes.String(), Serdes.String()));

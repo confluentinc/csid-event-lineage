@@ -26,8 +26,9 @@ public class TracingSessionStore extends
 
   public TracingSessionStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
-      SessionStore<Bytes, byte[]> wrapped) {
-    super(wrapped);
+      SessionStore<Bytes, byte[]> wrapped,
+      boolean isCachingStore) {
+    super(wrapped, isCachingStore);
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;
   }
@@ -48,7 +49,7 @@ public class TracingSessionStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().findSessions(key,
         earliestSessionEndTime, latestSessionStartTime);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
@@ -57,7 +58,7 @@ public class TracingSessionStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().findSessions(keyFrom, keyTo,
         earliestSessionEndTime, latestSessionStartTime);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
@@ -66,7 +67,7 @@ public class TracingSessionStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFindSessions(key,
         earliestSessionEndTime, latestSessionStartTime);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
@@ -75,7 +76,7 @@ public class TracingSessionStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFindSessions(keyFrom, keyTo,
         earliestSessionEndTime, latestSessionStartTime);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
@@ -84,21 +85,21 @@ public class TracingSessionStore extends
     if (null == bytesValue) {
       return null;
     }
-    bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(wrapped().name(), bytesValue,
+    bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(storeName, bytesValue,
         headersAccessor.get());
     return bytesValue;
   }
 
   @Override
   public void remove(Windowed<Bytes> sessionKey) {
-    stateStorePropagationHelpers.handleStateStoreSessionRemoveSpan(wrapped().name(),
+    stateStorePropagationHelpers.handleStateStoreSessionRemoveSpan(storeName,
         headersAccessor.get().toArray());
     wrapped().remove(sessionKey);
   }
 
   @Override
   public void put(Windowed<Bytes> sessionKey, byte[] aggregate) {
-    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
+    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
         aggregate, headersAccessor.get().toArray());
     wrapped().put(sessionKey, valueWithTrace);
   }
@@ -107,27 +108,27 @@ public class TracingSessionStore extends
   public KeyValueIterator<Windowed<Bytes>, byte[]> fetch(Bytes key) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetch(key);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> fetch(Bytes from, Bytes to) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetch(from, to);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFetch(Bytes key) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFetch(key);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFetch(Bytes from, Bytes to) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFetch(from, to);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 }

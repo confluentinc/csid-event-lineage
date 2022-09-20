@@ -20,8 +20,14 @@ public class BaseTracingStore<T extends StateStore> extends
    * capture logic.
    */
   protected Supplier<Headers> headersAccessor = HeadersHolder::get;
+  protected final String storeName;
 
-  public BaseTracingStore(T wrapped) {
+  public BaseTracingStore(T wrapped, boolean isCachingStore) {
     super(wrapped);
+    if (isCachingStore) {
+      storeName = wrapped.name() + "-cache";
+    } else {
+      storeName = wrapped.name();
+    }
   }
 }

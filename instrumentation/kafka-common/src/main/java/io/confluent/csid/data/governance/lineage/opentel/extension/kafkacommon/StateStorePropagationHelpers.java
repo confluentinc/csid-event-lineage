@@ -370,4 +370,11 @@ public class StateStorePropagationHelpers {
     currentInScope.makeCurrent();
   }
 
+  public byte[] restoreRawValue(byte[] value) {
+    byte[] restored = value;
+    if (hasTracingInfoAttached(value)) {
+      restored = headersHandler.extractHeaders(value).getRight();
+    }
+    return restored;
+  }
 }

@@ -5,7 +5,6 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
-import java.time.Instant;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -28,8 +27,9 @@ public class TracingWindowStore extends
 
   public TracingWindowStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
-      WindowStore<Bytes, byte[]> wrapped) {
-    super(wrapped);
+      WindowStore<Bytes, byte[]> wrapped,
+      boolean isCachingStore) {
+    super(wrapped, isCachingStore);
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;
   }
@@ -46,7 +46,7 @@ public class TracingWindowStore extends
 
   @Override
   public void put(Bytes key, byte[] value, long windowStartTimestamp) {
-    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
+    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
         value, headersAccessor.get().toArray());
     wrapped().put(key, valueWithTrace, windowStartTimestamp);
   }
@@ -57,7 +57,7 @@ public class TracingWindowStore extends
     if (null == bytesValue) {
       return null;
     }
-    bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(wrapped().name(), bytesValue,
+    bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(storeName, bytesValue,
         headersAccessor.get());
     return bytesValue;
   }
@@ -66,14 +66,14 @@ public class TracingWindowStore extends
   public WindowStoreIterator<byte[]> fetch(Bytes key, long timeFrom, long timeTo) {
     WindowStoreIterator<byte[]> resultIter = wrapped().fetch(key, timeFrom, timeTo);
     return new TracingWindowStoreIterator(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public WindowStoreIterator<byte[]> backwardFetch(Bytes key, long timeFrom, long timeTo) {
     WindowStoreIterator<byte[]> resultIter = wrapped().backwardFetch(key, timeFrom, timeTo);
     return new TracingWindowStoreIterator(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
@@ -82,7 +82,7 @@ public class TracingWindowStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetch(from, to, timeFrom,
         timeTo);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
@@ -91,34 +91,34 @@ public class TracingWindowStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFetch(from, to, timeFrom,
         timeTo);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> all() {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().all();
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> backwardAll() {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardAll();
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> fetchAll(long timeFrom, long timeTo) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetchAll(timeFrom, timeTo);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFetchAll(long timeFrom, long timeTo) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFetchAll(timeFrom, timeTo);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 }

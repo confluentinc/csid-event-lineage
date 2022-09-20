@@ -46,8 +46,13 @@ public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
     transformer.applyAdviceToMethod(
         isMethod()
             .and(isPrivate())
-            .and(named("maybeWrapCaching")),
+            .and(named("maybeWrapLogging")),
         WindowStoreBuilderInstrumentation.class.getName() + "$GetAdvice");
+    transformer.applyAdviceToMethod(
+        isMethod()
+            .and(isPrivate())
+            .and(named("maybeWrapCaching")),
+        WindowStoreBuilderInstrumentation.class.getName() + "$GetCachingAdvice");
   }
 
   public static class GetAdvice {
@@ -56,7 +61,17 @@ public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
     public static void onExit(
         @Advice.Return(readOnly = false) WindowStore<Bytes, byte[]> stateStore) {
       stateStore = new TracingWindowStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
-          stateStore);
+          stateStore, false);
+    }
+  }
+
+  public static class GetCachingAdvice {
+
+    @Advice.OnMethodExit(suppress = Throwable.class)
+    public static void onExit(
+        @Advice.Return(readOnly = false) WindowStore<Bytes, byte[]> stateStore) {
+      stateStore = new TracingWindowStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
+          stateStore, true);
     }
   }
 }

@@ -55,7 +55,7 @@ public class KeyValueToTimestampedKeyValueByteStoreAdapterInstrumentation implem
     public static void onEnter(
         @Advice.Argument(value = 0, readOnly = false) KeyValueStore<Bytes, byte[]> store) {
       store = new TracingKeyValueStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
-          store);
+          store, false);
     }
   }
 }

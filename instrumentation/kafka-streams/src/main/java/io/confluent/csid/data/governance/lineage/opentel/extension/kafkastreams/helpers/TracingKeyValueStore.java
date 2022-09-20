@@ -28,8 +28,9 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
 
   public TracingKeyValueStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
-      KeyValueStore<Bytes, byte[]> wrapped) {
-    super(wrapped);
+      KeyValueStore<Bytes, byte[]> wrapped,
+      boolean isCachingStore) {
+    super(wrapped, isCachingStore);
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;
   }
@@ -46,7 +47,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
 
   @Override
   public void put(Bytes key, byte[] value) {
-    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
+    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
         value, headersAccessor.get().toArray());
     wrapped().put(key, valueWithTrace);
   }
@@ -54,7 +55,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
 
   @Override
   public byte[] putIfAbsent(Bytes key, byte[] value) {
-    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
+    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
         value, headersAccessor.get().toArray());
     return wrapped().putIfAbsent(key, valueWithTrace);
   }
@@ -64,7 +65,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
     List<KeyValue<Bytes, byte[]>> tracedValueList = new ArrayList<>();
     for (KeyValue<Bytes, byte[]> entry : entries) {
       byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(
-          wrapped().name(),
+          storeName,
           entry.value, headersAccessor.get().toArray());
       tracedValueList.add(new KeyValue<>(entry.key, valueWithTrace));
     }
@@ -77,7 +78,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
     if (null == deletedValue) {
       return deletedValue;
     }
-    deletedValue = stateStorePropagationHelpers.handleStateStoreDeleteTrace(wrapped().name(),
+    deletedValue = stateStorePropagationHelpers.handleStateStoreDeleteTrace(storeName,
         deletedValue);
     return deletedValue;
   }
@@ -88,7 +89,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
     if (null == bytesValue) {
       return null;
     }
-    bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(wrapped().name(), bytesValue,
+    bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(storeName, bytesValue,
         headersAccessor.get());
     return bytesValue;
   }
@@ -97,35 +98,35 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
   public KeyValueIterator<Bytes, byte[]> range(Bytes from, Bytes to) {
     KeyValueIterator<Bytes, byte[]> resultIter = wrapped().range(from, to);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Bytes, byte[]> reverseRange(Bytes from, Bytes to) {
     KeyValueIterator<Bytes, byte[]> resultIter = wrapped().reverseRange(from, to);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Bytes, byte[]> all() {
     KeyValueIterator<Bytes, byte[]> resultIter = wrapped().all();
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Bytes, byte[]> reverseAll() {
     KeyValueIterator<Bytes, byte[]> resultIter = wrapped().reverseAll();
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   public <PS extends Serializer<P>, P> KeyValueIterator<Bytes, byte[]> prefixScan(P prefix,
       PS prefixKeySerializer) {
     KeyValueIterator<Bytes, byte[]> resultIter = wrapped().prefixScan(prefix, prefixKeySerializer);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, wrapped().name(), headersAccessor);
+        openTelemetryWrapper, storeName, headersAccessor);
   }
 
   @Override

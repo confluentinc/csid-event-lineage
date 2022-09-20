@@ -46,8 +46,13 @@ public class KeyValueStoreBuilderInstrumentation implements TypeInstrumentation 
     transformer.applyAdviceToMethod(
         isMethod()
             .and(isPrivate())
-            .and(named("maybeWrapCaching")),
+            .and(named("maybeWrapLogging")),
         KeyValueStoreBuilderInstrumentation.class.getName() + "$WrapStateStoreAdvice");
+    transformer.applyAdviceToMethod(
+        isMethod()
+            .and(isPrivate())
+            .and(named("maybeWrapCaching")),
+        KeyValueStoreBuilderInstrumentation.class.getName() + "$WrapCachingStateStoreAdvice");
   }
 
   public static class WrapStateStoreAdvice {
@@ -57,7 +62,19 @@ public class KeyValueStoreBuilderInstrumentation implements TypeInstrumentation 
         @Advice.Return(readOnly = false) KeyValueStore<Bytes, byte[]> stateStore) {
       stateStore = new TracingKeyValueStore(stateStorePropagationHelpers(),
           openTelemetryWrapper(),
-          stateStore);
+          stateStore,
+          false);
+    }
+  }
+  public static class WrapCachingStateStoreAdvice {
+
+    @Advice.OnMethodExit(suppress = Throwable.class)
+    public static void onExit(
+        @Advice.Return(readOnly = false) KeyValueStore<Bytes, byte[]> stateStore) {
+      stateStore = new TracingKeyValueStore(stateStorePropagationHelpers(),
+          openTelemetryWrapper(),
+          stateStore,
+          true);
     }
   }
 }

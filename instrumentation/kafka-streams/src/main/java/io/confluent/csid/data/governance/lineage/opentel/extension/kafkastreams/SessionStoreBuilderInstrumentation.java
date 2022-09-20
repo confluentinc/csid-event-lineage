@@ -40,22 +40,37 @@ public class SessionStoreBuilderInstrumentation implements TypeInstrumentation {
    */
   @Override
   public void transform(TypeTransformer transformer) {
-
+    transformer.applyAdviceToMethod(
+        isMethod()
+            .and(isPrivate())
+            .and(named("maybeWrapLogging")),
+        SessionStoreBuilderInstrumentation.class.getName() + "$GetAdvice");
     transformer.applyAdviceToMethod(
         isMethod()
             .and(isPrivate())
             .and(named("maybeWrapCaching")),
-        SessionStoreBuilderInstrumentation.class.getName() + "$GetAdvice");
+        SessionStoreBuilderInstrumentation.class.getName() + "$GetCachingAdvice");
   }
 
   public static class GetAdvice {
-
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.Return(readOnly = false) SessionStore<Bytes, byte[]> stateStore) {
       stateStore = new TracingSessionStore(stateStorePropagationHelpers(),
           openTelemetryWrapper(),
-          stateStore);
+          stateStore,
+          false);
+    }
+  }
+
+  public static class GetCachingAdvice {
+    @Advice.OnMethodExit(suppress = Throwable.class)
+    public static void onExit(
+        @Advice.Return(readOnly = false) SessionStore<Bytes, byte[]> stateStore) {
+      stateStore = new TracingSessionStore(stateStorePropagationHelpers(),
+          openTelemetryWrapper(),
+          stateStore,
+          true);
     }
   }
 }
