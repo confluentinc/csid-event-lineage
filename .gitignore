@@ -30,3 +30,8 @@ hs_err_pid*
 .gradle
 **/build
 build
+
+# Redundant files for the documentation
+docs_src/_build
+docs/_sources
+docs/_static/fonts
