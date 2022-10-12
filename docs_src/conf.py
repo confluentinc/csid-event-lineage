@@ -9,13 +9,9 @@ now = datetime.datetime.now()
 
 # -- Project information -----------------------------------------------------
 
-project = 'Confluent CSID Secrets Provider documentation'
+project = 'Confluent CSID Event Lineage documentation'
 copyright = f'{now.year}, Confluent'
 author = 'CSID'
-
-# TODO retrieve the version number from the pom
-# The full version, including alpha/beta/rc tags
-# release = 'Release documentation'
 
 
 # -- General configuration ---------------------------------------------------
