@@ -41,11 +41,18 @@ public class HeaderCaptureConfiguration {
    */
   public static final String HEADER_CHARSET_PROP = "event.lineage.header-charset";
 
-  private final Set<String> headerCaptureWhiteList = new HashSet<>();
-  private final Set<String> headerPropagationWhiteList = new HashSet<>();
-  private final Charset charset;
+  private Set<String> headerCaptureWhiteList;
+  private Set<String> headerPropagationWhiteList;
+  private Charset charset;
 
   public HeaderCaptureConfiguration() {
+    loadConfiguration();
+  }
+
+  private void loadConfiguration() {
+    headerCaptureWhiteList = new HashSet<>();
+    headerPropagationWhiteList = new HashSet<>();
+    charset = StandardCharsets.UTF_8;
     if (System.getProperties().containsKey(HEADER_CAPTURE_WHITELIST_PROP)) {
       Arrays.stream(System.getProperty(HEADER_CAPTURE_WHITELIST_PROP).split(","))
           .map(String::trim)
@@ -59,11 +66,9 @@ public class HeaderCaptureConfiguration {
           .forEach(prop -> headerPropagationWhiteList.add(prop.toLowerCase()));
     }
     if (System.getProperties().containsKey(HEADER_CHARSET_PROP)) {
-      this.charset = Charset.forName(System.getProperty(HEADER_CHARSET_PROP).trim());
-    } else {
-      this.charset = StandardCharsets.UTF_8;
+      charset = Charset.forName(System.getProperty(HEADER_CHARSET_PROP).trim());
     }
-    log.info(
+    log.debug(
         "HeaderCaptureConfiguration - CaptureWhitelist: {}, PropagationWhitelist: {}, Charset: {}",
         this.headerCaptureWhiteList, this.headerPropagationWhiteList, this.charset);
   }
@@ -97,4 +102,8 @@ public class HeaderCaptureConfiguration {
     return charset;
   }
 
+  //Visible for testing - for resetting configuration for different tests
+  void reloadConfiguration() {
+    loadConfiguration();
+  }
 }

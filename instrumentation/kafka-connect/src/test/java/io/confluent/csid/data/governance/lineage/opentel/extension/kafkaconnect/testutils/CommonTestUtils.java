@@ -183,7 +183,7 @@ public class CommonTestUtils {
 
   public String getClusterId() {
     final String[] clusterId = new String[1];
-    waitUntil(
+    waitUntil("Get cluster id",
         () -> {
           try {
             clusterId[0] = getClusterIdInternal();
@@ -250,7 +250,8 @@ public class CommonTestUtils {
     return new File(tempDir, CONNECT_TEMP_FILE);
   }
 
-  public void waitUntil(Supplier<Boolean> condition) {
-    await().atMost(DEFAULT_AWAIT_TIMEOUT).pollInterval(POLL_INTERVAL).until(condition::get);
+  public void waitUntil(String alias, Supplier<Boolean> condition) {
+    await().alias(alias).atMost(DEFAULT_AWAIT_TIMEOUT).pollInterval(POLL_INTERVAL)
+        .until(condition::get);
   }
 }

@@ -36,7 +36,7 @@ public class SmtTracingSmokeTest extends IntegrationTestBase {
   @BeforeEach
   void setup() {
     super.setup();
-    startConnectContainer(Connectors.SOURCE_WITH_SMT);
+    startStandaloneConnectContainer(Connectors.SOURCE_WITH_SMT);
   }
 
   @AfterEach

@@ -39,6 +39,7 @@ public class CommonTestUtils {
   private String kafkaBootsrapServers;
   private KafkaContainer kafkaContainer;
   private KafkaProducer<String, String> kafkaProducer;
+  private Properties additionalProperties = new Properties();
 
   public CommonTestUtils() {
   }
@@ -64,6 +65,10 @@ public class CommonTestUtils {
     }
   }
 
+  public void updateAdditionalProperties(Consumer<Properties> updates) {
+    updates.accept(additionalProperties);
+  }
+
   public Properties getKafkaProperties() {
     Properties props = new Properties();
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -76,6 +81,7 @@ public class CommonTestUtils {
     props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-consumer-group-" + UUID.randomUUID());
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     props.put(ConsumerConfig.CLIENT_ID_CONFIG, "test-consumer-" + UUID.randomUUID());
+    props.putAll(additionalProperties);
     return props;
   }
 
