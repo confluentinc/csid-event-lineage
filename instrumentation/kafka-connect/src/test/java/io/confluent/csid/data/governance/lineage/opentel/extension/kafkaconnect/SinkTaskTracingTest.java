@@ -3,13 +3,14 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertAnyTraceSatisfies;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertTracesCaptured;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.cleanupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.setupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.consume;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.produce;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.sinkTask;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.DISABLE_PROPAGATION_UT_TAG;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TraceAssertData.trace;
 import static org.awaitility.Awaitility.await;
 
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
@@ -92,18 +94,63 @@ public class SinkTaskTracingTest {
 
     String key = " {\"schema\":{\"type\":\"int32\",\"optional\":false},\"payload\":0}";
     String value = "{\"schema\":{\"type\":\"int64\",\"optional\":false},\"payload\":31}";
+
     commonTestUtils.produceSingleEvent(testTopic, key, value, CAPTURED_PROPAGATED_HEADER);
 
-    await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
-        .until(() -> instrumentation.waitForTraces(1).get(0).size() == 3);
+    commonTestUtils.waitUntil(() -> instrumentation.waitForTraces(1).get(0).size() == 3);
 
     connectLatch.countDown();
     connectStandalone.awaitStop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
-    assertAnyTraceSatisfies(traces,
+    assertTracesCaptured(traces,
         trace().withSpans(produce(), consume(), sinkTask().withNameContaining(testTopic)
+            .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
+  }
+
+  /**
+   * Test scenario when consumed message has no tracing context header.
+   *
+   * @see TestConstants.DISABLE_PROPAGATION_UT_TAG
+   */
+  @SneakyThrows
+  @Test
+  @Tag(DISABLE_PROPAGATION_UT_TAG)
+  void testSinkTaskCaptureWithHeaderPropagationAndCaptureWhenInboundMessageHasNoTrace() {
+    ConnectStandalone connectStandalone = new ConnectStandalone(
+        commonTestUtils.getConnectWorkerProperties(),
+        commonTestUtils.getSinkTaskProperties(null, testTopic));
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    new Thread(() -> {
+      connectStandalone.start();
+      try {
+
+        connectLatch.await();
+      } catch (InterruptedException e) {
+      } finally {
+        connectStandalone.stop();
+      }
+    }).start();
+
+    await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(100)).until(
+        connectStandalone::isRunning);
+
+    String key = " {\"schema\":{\"type\":\"int32\",\"optional\":false},\"payload\":0}";
+    String value = "{\"schema\":{\"type\":\"int64\",\"optional\":false},\"payload\":31}";
+
+    commonTestUtils.produceSingleEvent(testTopic, key, value, CAPTURED_PROPAGATED_HEADER);
+
+    commonTestUtils.waitUntil(() -> instrumentation.waitForTraces(2).get(1).size() == 2);
+
+    connectLatch.countDown();
+    connectStandalone.awaitStop();
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(2);
+    //Expected trace - producer send, consumer process, sink-task
+    assertTracesCaptured(traces,
+        trace().withSpans(produce()),
+        trace().withSpans(consume(), sinkTask().withNameContaining(testTopic)
             .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
   }
 }

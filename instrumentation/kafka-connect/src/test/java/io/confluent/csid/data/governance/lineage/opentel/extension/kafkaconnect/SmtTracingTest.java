@@ -7,16 +7,19 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.cleanupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.setupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.smt;
+import static org.awaitility.Awaitility.await;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.VerifiableSourceConnector;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -68,12 +71,13 @@ public class SmtTracingTest {
 
   @SneakyThrows
   @Test
-  void testSMTCaptureWithHeaderCapture() {
+  void testSMTCaptureWithHeaderCaptureUsedWithSourceTask() {
 
     ConnectStandalone connectStandalone = new ConnectStandalone(
         commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSourceTaskProperties(
-            commonTestUtils.getHeaderInjectTrasnformProperties(), testTopic));
+            commonTestUtils.getHeaderInjectTrasnformProperties(), testTopic,
+            VerifiableSourceConnector.class));
     CountDownLatch connectLatch = new CountDownLatch(1);
     new Thread(() -> {
       connectStandalone.start();
@@ -96,6 +100,46 @@ public class SmtTracingTest {
     // Only checking first trace's second span - should be the SMT span.
     // Now that SourceTask is wired - first is Source Task span, followed by SMT and Producer Send.
     assertSpan(traces.get(0).get(1), smt().withNameContaining(transformClassName)
+        .withHeaders(charset, CAPTURED_PROPAGATED_HEADER));
+  }
+
+
+  @SneakyThrows
+  @Test
+  void testSMTCaptureWithHeaderCaptureUsedWithSinkTask() {
+
+    ConnectStandalone connectStandalone = new ConnectStandalone(
+        commonTestUtils.getConnectWorkerProperties(),
+        commonTestUtils.getSinkTaskProperties(
+            commonTestUtils.getHeaderInjectTrasnformProperties(), testTopic));
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    new Thread(() -> {
+      connectStandalone.start();
+      try {
+
+        connectLatch.await();
+      } catch (InterruptedException e) {
+      } finally {
+        connectStandalone.stop();
+      }
+    }).start();
+
+    await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(100)).until(
+        connectStandalone::isRunning);
+
+    String key = " {\"schema\":{\"type\":\"int32\",\"optional\":false},\"payload\":0}";
+    String value = "{\"schema\":{\"type\":\"int64\",\"optional\":false},\"payload\":31}";
+    commonTestUtils.produceSingleEvent(testTopic, key, value);
+
+    commonTestUtils.waitUntil(() -> instrumentation.waitForTraces(1).get(0).size() == 4);
+
+    connectLatch.countDown();
+    connectStandalone.awaitStop();
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(1);
+    // Only checking first trace's third span - should be the SMT span.
+    // Now that SinkTask is wired - first is producer send span, followed by consumer process, SMT and Sink task.
+    assertSpan(traces.get(0).get(2), smt().withNameContaining(transformClassName)
         .withHeaders(charset, CAPTURED_PROPAGATED_HEADER));
   }
 

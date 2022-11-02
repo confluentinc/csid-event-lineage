@@ -43,15 +43,6 @@ dependencies {
 
 }
 
-test {
-    jvmArgs("-Dotel.instrumentation.kafka.experimental-span-attributes=true")
-    jvmArgs("-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true")
-    jvmArgs("-Dio.opentelemetry.context.enableStrictContext=true")
-    jvmArgs("-Dotel.metrics.exporter=none")
-
-
-}
-
 def muzzleVersions = ext.versions
 
 muzzle {

@@ -2,6 +2,7 @@ plugins {
     id "io.opentelemetry.instrumentation.muzzle-generation"
     id "io.opentelemetry.instrumentation.muzzle-check"
     id "maven-publish"
+    id "java"
 }
 
 apply from: "$rootDir/gradle/instrumentation.gradle"
@@ -34,12 +35,38 @@ dependencies {
     testImplementation("org.awaitility:awaitility:${versions.awaitility}")
     testImplementation("org.slf4j:slf4j-simple:${versions.slf4j}")
     testImplementation("org.apache.kafka:connect-runtime:${versions.kafka}")
+    testImplementation("org.apache.kafka:kafka-tools:${versions.kafka}")
+
     testImplementation("org.apache.commons:commons-lang3:${versions.apacheCommons3}")
 }
 
+task testsWithNoPropagation(type: Test) {
+    useJUnitPlatform {
+        includeTags "DISABLE_PROPAGATION"
+    }
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
+    jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=false")
+}
+task unitTests(type: Test) {
+    useJUnitPlatform {
+        excludeTags "DISABLE_PROPAGATION"
+    }
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
+    jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=true")
+    mustRunAfter(testsWithNoPropagation)
+}
 test {
-    jvmArgs("-Dotel.instrumentation.kafka.experimental-span-attributes=true")
-    jvmArgs("-Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true")
+    dependsOn(unitTests, testsWithNoPropagation)
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("dummyfilter")
+        setFailOnNoMatchingTests(false)
+    }
+    mustRunAfter(unitTests)
 }
 
 def muzzleVersions = ext.versions
