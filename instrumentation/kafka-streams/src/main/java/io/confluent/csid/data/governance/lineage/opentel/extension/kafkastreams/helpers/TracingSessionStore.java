@@ -100,7 +100,7 @@ public class TracingSessionStore extends
   @Override
   public void put(Windowed<Bytes> sessionKey, byte[] aggregate) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
-        aggregate, headersAccessor.get().toArray());
+        aggregate, headersAccessor.get().toArray(), isCachingStore);
     wrapped().put(sessionKey, valueWithTrace);
   }
 

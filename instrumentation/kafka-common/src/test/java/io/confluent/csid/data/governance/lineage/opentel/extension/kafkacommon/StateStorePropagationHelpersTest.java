@@ -250,7 +250,7 @@ class StateStorePropagationHelpersTest {
     doNothing().when(mockSpanScope).close();
 
     classUnderTest.handleStateStorePutTrace(storeName, value.getBytes(StandardCharsets.UTF_8),
-        headers);
+        headers, false);
 
     verify(mockSpanHandler).addEventToSpan(mockCurrentSpan, expectedSpanName,
         Attributes.of(

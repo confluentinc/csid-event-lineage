@@ -70,14 +70,16 @@ public class Constants {
      * State store Put operation name - used by all put operations - put, putIfAbsent, putAll
      */
     public static final String STATE_STORE_PUT = "state-store-put";
+
+    public static final String STATE_STORE_CACHE_PUT = "state-store-cache-put";
+
     /**
      * State store delete operation name - used by delete / remove operations - delete,
      * removeSession
      */
     public static final String STATE_STORE_DELETE = "state-store-delete";
 
-    public static final String STATE_STORE_FLUSH = "state-store-flush";
-
+    public static final String STATE_STORE_FLUSH = "state-store-cache-flush";
 
     public static String PRODUCE_CONSUME_TASK_FORMAT = "%s %s";
     public static final String PRODUCER_SEND = "send";

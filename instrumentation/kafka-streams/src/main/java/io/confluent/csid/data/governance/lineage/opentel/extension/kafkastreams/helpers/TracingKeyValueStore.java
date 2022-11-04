@@ -48,7 +48,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
   @Override
   public void put(Bytes key, byte[] value) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
-        value, headersAccessor.get().toArray());
+        value, headersAccessor.get().toArray(), isCachingStore);
     wrapped().put(key, valueWithTrace);
   }
 
@@ -56,7 +56,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
   @Override
   public byte[] putIfAbsent(Bytes key, byte[] value) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
-        value, headersAccessor.get().toArray());
+        value, headersAccessor.get().toArray(), isCachingStore);
     return wrapped().putIfAbsent(key, valueWithTrace);
   }
 
@@ -66,7 +66,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
     for (KeyValue<Bytes, byte[]> entry : entries) {
       byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(
           storeName,
-          entry.value, headersAccessor.get().toArray());
+          entry.value, headersAccessor.get().toArray(), isCachingStore);
       tracedValueList.add(new KeyValue<>(entry.key, valueWithTrace));
     }
     wrapped().putAll(tracedValueList);

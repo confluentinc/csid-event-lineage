@@ -47,7 +47,7 @@ public class TracingWindowStore extends
   @Override
   public void put(Bytes key, byte[] value, long windowStartTimestamp) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
-        value, headersAccessor.get().toArray());
+        value, headersAccessor.get().toArray(), isCachingStore);
     wrapped().put(key, valueWithTrace, windowStartTimestamp);
   }
 

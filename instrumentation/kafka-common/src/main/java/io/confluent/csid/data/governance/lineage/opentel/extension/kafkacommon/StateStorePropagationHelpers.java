@@ -258,7 +258,7 @@ public class StateStorePropagationHelpers {
    *                       whitelists, prepend to value and capture as Span attributes
    * @return byte array consisting of trace, header information and value
    */
-  public byte[] handleStateStorePutTrace(String stateStoreName, byte[] value, Header[] headers) {
+  public byte[] handleStateStorePutTrace(String stateStoreName, byte[] value, Header[] headers, boolean isCache) {
     if (hasTracingInfoAttached(value)) {
       return value;
     }
@@ -278,7 +278,7 @@ public class StateStorePropagationHelpers {
           traceIdentifier.getBytes(StandardCharsets.UTF_8), headersForPropagation);
     }
 
-    recordStateStorePutSpanWithHeaders(stateStoreName, traceIdentifier, headers);
+    recordStateStorePutSpanWithHeaders(stateStoreName, traceIdentifier, headers, isCache);
     return value;
   }
 
@@ -318,9 +318,10 @@ public class StateStorePropagationHelpers {
   }
 
   private void recordStateStorePutSpanWithHeaders(String stateStoreName, String traceIdentifier,
-      Header[] headers) {
+      Header[] headers, boolean isCache) {
+    String spanOp = isCache? SpanNames.STATE_STORE_CACHE_PUT : SpanNames.STATE_STORE_PUT;
     String spanName = String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT, stateStoreName,
-        SpanNames.STATE_STORE_PUT);
+        spanOp);
     spanHandler.addEventToSpan(openTelemetryWrapper.currentSpan(), spanName,
         Attributes.of(AttributeKey.stringKey(TRACING_HEADER),
             traceIdentifier != null ? traceIdentifier : "null"));
