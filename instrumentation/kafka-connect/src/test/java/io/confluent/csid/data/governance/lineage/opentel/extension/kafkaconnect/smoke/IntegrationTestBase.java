@@ -103,7 +103,7 @@ abstract class IntegrationTestBase {
             MountableFile.forClasspathResource("insertHeaderBytes-1.0-SNAPSHOT.jarfile"),
             "/etc/kafka-connect/jars/insertHeaderBytes-1.0-SNAPSHOT.jar")
         .withCopyFileToContainer(
-            MountableFile.forClasspathResource("opentelemetry-javaagent-1.13.0.jarfile"),
+            MountableFile.forClasspathResource("opentelemetry-javaagent.jarfile"),
             "/opt/opentelemetry-javaagent.jar")
         .withCopyFileToContainer(
             MountableFile.forHostPath(extensionPath),
