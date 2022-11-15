@@ -9,6 +9,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.Singletons.spanHandler;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceMetadata;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
@@ -29,6 +30,7 @@ public class TracingIterator<T extends ConnectRecord<T>>
 
   private final Iterator<T> delegateIterator;
   private final String spanName;
+  private final String connectorId;
   private Scope currentScope;
   private Span currentSpan;
 
@@ -40,14 +42,17 @@ public class TracingIterator<T extends ConnectRecord<T>>
    *
    * @param delegateIterator iterator to wrap
    * @param spanName         Span name for creating new spans on next() call.
+   * @param connectorId      connectorId - used for service name overriding during span creation
    */
   public TracingIterator(
-      Iterator<T> delegateIterator, String spanName) {
+      Iterator<T> delegateIterator, String spanName, String connectorId) {
     this.spanName = spanName;
+    this.connectorId = connectorId;
     this.delegateIterator = delegateIterator;
     this.sinkRecordContextStore = VirtualField.find(SinkRecord.class, Context.class);
     this.sourceRecordContextStore = VirtualField.find(SourceRecord.class, Context.class);
-    log.trace("Creating TracingIterator spanName={}, delegate={}", spanName, delegateIterator);
+    log.trace("Creating TracingIterator spanName={}, delegate={}, connectorId={}", spanName,
+        delegateIterator, connectorId);
   }
 
   @Override
@@ -98,6 +103,7 @@ public class TracingIterator<T extends ConnectRecord<T>>
           spanName);
       currentSpan = spanHandler().createAndStartSpan(topicSpanName, parentContext);
       currentScope = currentSpan.makeCurrent();
+      spanHandler().captureServiceMetadataToSpan(new ServiceMetadata(connectorId));
       connectHandler().captureConnectHeadersToCurrentSpan(record.headers(),
           headerCaptureConfiguration().getHeaderValueEncoding());
       log.trace("Created Span in iterator.next, parentContext={}",

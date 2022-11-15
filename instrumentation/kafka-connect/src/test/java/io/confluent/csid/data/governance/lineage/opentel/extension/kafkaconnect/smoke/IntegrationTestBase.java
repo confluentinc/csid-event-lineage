@@ -23,6 +23,8 @@ abstract class IntegrationTestBase {
     public static String SOURCE_WITH_SMT = "source_with_smt.properties";
     public static String SINK_WITH_SMT = "sink_with_smt.properties";
 
+    public static String SINK_CONNECTOR_NAME = "VerifiableSinkTask1";
+    public static String SOURCE_CONNECTOR_NAME = "VerifiableSourceTask1";
   }
 
 
@@ -152,5 +154,4 @@ abstract class IntegrationTestBase {
   private void stopCollectorContainer() {
     backend.stop();
   }
-
 }

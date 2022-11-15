@@ -13,6 +13,8 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.HeaderCapturingIterable;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.HeaderCapturingIterator;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.HeaderCapturingList;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceMetadata;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceNameHolder;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import io.opentelemetry.javaagent.instrumentation.kafkaclients.ConsumerRecordsInstrumentation;
@@ -72,9 +74,11 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
 
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static <K, V> void wrap(
+        @Advice.This ConsumerRecords<K, V> consumerRecords,
         @Advice.Return(readOnly = false) Iterable<ConsumerRecord<K, V>> iterable) {
       if (iterable != null) {
-        iterable = HeaderCapturingIterable.wrap(iterable);
+        iterable = HeaderCapturingIterable.wrap(iterable,
+            new ServiceMetadata(ServiceNameHolder.get()));
       }
     }
   }
@@ -83,10 +87,12 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
   public static class ListAdvice {
 
     @Advice.OnMethodExit(suppress = Throwable.class)
-    public static void wrap(
-        @Advice.Return(readOnly = false) List<ConsumerRecord<?, ?>> list) {
+    public static <K, V> void wrap(
+        @Advice.This ConsumerRecords<K, V> consumerRecords,
+        @Advice.Return(readOnly = false) List<ConsumerRecord<K, V>> list) {
       if (list != null) {
-        list = new HeaderCapturingList(list);
+        list = HeaderCapturingList.wrap(list,
+            new ServiceMetadata(ServiceNameHolder.get()));
       }
     }
   }
@@ -96,10 +102,11 @@ public class ExtendedKafkaConsumerRecordIteratorInstrumentation implements TypeI
 
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static <K, V> void wrap(
+        @Advice.This ConsumerRecords<K, V> consumerRecords,
         @Advice.Return(readOnly = false) Iterator<ConsumerRecord<K, V>> iterator) {
-
       if (iterator != null) {
-        iterator = HeaderCapturingIterator.wrap(iterator);
+        iterator = HeaderCapturingIterator.wrap(iterator,
+            new ServiceMetadata(ServiceNameHolder.get()));
       }
     }
   }

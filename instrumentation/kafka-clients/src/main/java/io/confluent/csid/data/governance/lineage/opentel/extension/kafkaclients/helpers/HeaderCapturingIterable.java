@@ -3,10 +3,13 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ServiceMetadata;
 import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessTracing;
 import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessWrapper;
 import io.opentelemetry.javaagent.instrumentation.kafkaclients.TracingIterable;
 import java.util.Iterator;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
@@ -15,31 +18,29 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * Wraps ConsumerRecord iterable to allow returning of wrapped Iterator with tracing / header
  * capture logic for header propagation
  */
-public class HeaderCapturingIterable<K, V>
-    implements Iterable<ConsumerRecord<K, V>>,
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class HeaderCapturingIterable<K, V> implements Iterable<ConsumerRecord<K, V>>,
     KafkaClientsConsumerProcessWrapper<Iterable<ConsumerRecord<K, V>>> {
 
   private final Iterable<ConsumerRecord<K, V>> delegate;
-  private boolean firstIterator = true;
-
-  protected HeaderCapturingIterable(
-      Iterable<ConsumerRecord<K, V>> delegate) {
-    this.delegate = delegate;
-  }
+  private final ServiceMetadata serviceMetadata;
 
   /**
    * Wraps iterable with {@link HeaderCapturingIterable} if
    * {@link KafkaClientsConsumerProcessTracing#wrappingEnabled()} is true.
    *
-   * @param delegate generic ConsumerRecord iterable to wrap
-   * @param <K>      ConsumerRecord Key type
-   * @param <V>      ConsumerRecord Value type
+   * @param delegate        generic ConsumerRecord iterable to wrap
+   * @param <K>             ConsumerRecord Key type
+   * @param <V>             ConsumerRecord Value type
+   * @param serviceMetadata metadata that we want to pass through into the iterators for capturing
+   *                        in spans created
    * @return {@link HeaderCapturingIterable} or wrapped iterable if wrapping is not enabled.
    */
   public static <K, V> Iterable<ConsumerRecord<K, V>> wrap(
-      Iterable<ConsumerRecord<K, V>> delegate) {
+      Iterable<ConsumerRecord<K, V>> delegate, ServiceMetadata serviceMetadata) {
+
     if (KafkaClientsConsumerProcessTracing.wrappingEnabled()) {
-      return new HeaderCapturingIterable<>(delegate);
+      return new HeaderCapturingIterable<>(delegate, serviceMetadata);
     }
     return delegate;
   }
@@ -55,16 +56,9 @@ public class HeaderCapturingIterable<K, V>
   @Override
   public Iterator<ConsumerRecord<K, V>> iterator() {
     Iterator<ConsumerRecord<K, V>> it;
-    // We should only return one iterator with tracing.
-    // However, this is not thread-safe, but usually the first (hopefully only) traversal of
+    // This is not thread-safe, but usually the first (hopefully only) traversal of
     // ConsumerRecords is performed in the same thread that called poll()
-    if (firstIterator) {
-      it = HeaderCapturingIterator.wrap(delegate.iterator());
-      firstIterator = false;
-    } else {
-      it = delegate.iterator();
-    }
-
+    it = HeaderCapturingIterator.wrap(delegate.iterator(), serviceMetadata);
     return it;
   }
 

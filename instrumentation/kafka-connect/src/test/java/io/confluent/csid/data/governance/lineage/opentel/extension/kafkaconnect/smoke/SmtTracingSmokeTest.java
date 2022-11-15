@@ -3,7 +3,9 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanAttribute;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.IntegrationTestBase.Connectors.SOURCE_CONNECTOR_NAME;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedServiceName;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasAttribute;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.DEFAULT_TIMEOUT_SECONDS;
@@ -64,9 +66,13 @@ public class SmtTracingSmokeTest extends IntegrationTestBase {
         SMT_TASK_NAME, SEND_TASK_NAME);
     assertThat(spansWithHeaders.size()).as("Expected 2 spans - SMT and Send").isEqualTo(2);
     spansWithHeaders.forEach(
-        resourceSpanPair -> assertSpanAttribute(resourceSpanPair.getRight(),
+        resourceSpanPair -> assertSpanHasAttribute(resourceSpanPair.getRight(),
             "headers." + CAPTURED_PROPAGATED_HEADER.key(),
             new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8)));
+
+    //All 3 spans should have service.name Resource attribute = Connector name
+    expectedTrace.forEach(
+        resourceSpanPair -> assertSpanHasExpectedServiceName(resourceSpanPair, SOURCE_CONNECTOR_NAME));
   }
 
 }
