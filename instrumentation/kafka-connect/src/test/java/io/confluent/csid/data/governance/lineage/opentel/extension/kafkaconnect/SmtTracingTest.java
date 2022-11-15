@@ -22,7 +22,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import lombok.SneakyThrows;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterAll;
@@ -54,7 +53,7 @@ public class SmtTracingTest {
   @BeforeEach
   void setup() {
     testTopic = "test-topic-" + UUID.randomUUID();
-    commonTestUtils = new CommonTestUtils(tempDir);
+    commonTestUtils = new CommonTestUtils(tempDir.getAbsolutePath());
     commonTestUtils.startKafkaContainer();
   }
 
@@ -78,23 +77,12 @@ public class SmtTracingTest {
         commonTestUtils.getSourceTaskProperties(
             commonTestUtils.getHeaderInjectTrasnformProperties(), testTopic,
             VerifiableSourceConnector.class));
-    CountDownLatch connectLatch = new CountDownLatch(1);
-    new Thread(() -> {
-      connectStandalone.start();
-      try {
-
-        connectLatch.await();
-      } catch (InterruptedException e) {
-      } finally {
-        connectStandalone.stop();
-      }
-    }).start();
+    connectStandalone.start();
 
     commonTestUtils.consumeAtLeastXEvents(StringDeserializer.class, StringDeserializer.class,
         testTopic, 1);
 
-    connectLatch.countDown();
-    connectStandalone.awaitStop();
+    connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     // Only checking first trace's second span - should be the SMT span.
@@ -102,7 +90,6 @@ public class SmtTracingTest {
     assertSpan(traces.get(0).get(1), smt().withNameContaining(transformClassName)
         .withHeaders(charset, CAPTURED_PROPAGATED_HEADER));
   }
-
 
   @SneakyThrows
   @Test
@@ -112,17 +99,7 @@ public class SmtTracingTest {
         commonTestUtils.getConnectWorkerProperties(),
         commonTestUtils.getSinkTaskProperties(
             commonTestUtils.getHeaderInjectTrasnformProperties(), testTopic));
-    CountDownLatch connectLatch = new CountDownLatch(1);
-    new Thread(() -> {
-      connectStandalone.start();
-      try {
-
-        connectLatch.await();
-      } catch (InterruptedException e) {
-      } finally {
-        connectStandalone.stop();
-      }
-    }).start();
+    connectStandalone.start();
 
     await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(100)).until(
         connectStandalone::isRunning);
@@ -133,8 +110,7 @@ public class SmtTracingTest {
 
     commonTestUtils.waitUntil(() -> instrumentation.waitForTraces(1).get(0).size() == 4);
 
-    connectLatch.countDown();
-    connectStandalone.awaitStop();
+    connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     // Only checking first trace's third span - should be the SMT span.

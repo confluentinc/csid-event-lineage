@@ -4,11 +4,14 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.CONNECT_STOP_TIMEOUT;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.LATCH_TIMEOUT_SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.net.URI;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.utils.Time;
@@ -50,8 +53,35 @@ public class ConnectStandalone {
   private Connect connect;
   private final Properties workerProperties;
   private final Properties connectorProperties;
+  private CountDownLatch controlLatch;
 
   public void start() {
+    controlLatch = new CountDownLatch(1);
+    new Thread(() -> {
+      this.startInstance();
+      try {
+        controlLatch.await(LATCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+      } finally {
+        this.stopInstance();
+      }
+    }).start();
+  }
+
+  public void stop() {
+    controlLatch.countDown();
+    awaitStop();
+  }
+
+  public boolean isRunning() {
+    return connect != null && connect.isRunning();
+  }
+
+  public void awaitStop() {
+    await().atMost(CONNECT_STOP_TIMEOUT).until(() -> !isRunning());
+  }
+
+  private void startInstance() {
 
     try {
       Time time = Time.SYSTEM;
@@ -123,21 +153,13 @@ public class ConnectStandalone {
     }
   }
 
-  public void stop() {
+  private void stopInstance() {
     try {
       if (connect != null && connect.isRunning()) {
         connect.stop();
       }
     } catch (Exception e) {
     } // suppressed
-  }
-
-  public boolean isRunning() {
-    return connect != null && connect.isRunning();
-  }
-
-  public void awaitStop() {
-    await().atMost(CONNECT_STOP_TIMEOUT).until(() -> !isRunning());
   }
 }
 

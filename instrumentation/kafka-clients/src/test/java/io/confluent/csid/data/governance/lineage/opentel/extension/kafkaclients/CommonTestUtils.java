@@ -24,6 +24,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -113,6 +114,29 @@ public class CommonTestUtils {
         }
 
       });
+      return consumed.size() == numberToConsume;
+    });
+    consumer.close();
+    log.info("Consumed Records: {}", consumed);
+  }
+
+  public void consumeEventsAsList(String topic, int numberToConsume,
+      Consumer<ConsumerRecord<String, String>> consumedRecordProcessFunc) {
+    List<ConsumerRecord<String, String>> consumed = new ArrayList<>();
+
+    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(getKafkaProperties());
+    consumer.subscribe(singleton(topic));
+    await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofSeconds(1)).until(() -> {
+      ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(900));
+      // Noop - need to iterate through received records to kick off Process span
+      // and capture consumed records for assertions
+      List<ConsumerRecord<String, String>> list = records.records(new TopicPartition(topic, 0));
+      for (ConsumerRecord<String, String> record : list) {
+        consumed.add(record);
+        if (consumedRecordProcessFunc != null) {
+          consumedRecordProcessFunc.accept(record);
+        }
+      }
       return consumed.size() == numberToConsume;
     });
     consumer.close();

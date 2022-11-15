@@ -36,37 +36,81 @@ dependencies {
     testImplementation("org.slf4j:slf4j-simple:${versions.slf4j}")
     testImplementation("org.apache.kafka:connect-runtime:${versions.kafka}")
     testImplementation("org.apache.kafka:kafka-tools:${versions.kafka}")
-
     testImplementation("org.apache.commons:commons-lang3:${versions.apacheCommons3}")
+
+    testImplementation("com.squareup.okhttp3:okhttp:3.12.12")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:${versions.jackson}")
+    testImplementation("com.google.protobuf:protobuf-java-util:3.12.4")
+    testImplementation("io.opentelemetry:opentelemetry-api:${versions.opentelemetry}")
+    testImplementation("io.opentelemetry.proto:opentelemetry-proto:${versions.opentelemetryProto}")
+
+}
+/**
+ * Downloads open telemetry agent using the version specified in the project's gradle.properties file.
+ * This is used to by smoke tests.
+ */
+def downloadOTelAgent() {
+    def src = "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${versions.opentelemetryJavaagent}/opentelemetry-javaagent.jar"
+    def destDir = "$projectDir/src/test/resources"
+    def destFile = "$destDir/opentelemetry-javaagent.jarfile"
+    def sourceUrl = new URL(src)
+    def file = new File(destFile)
+    if (file.exists()) {
+        println "file $destFile already exists, skipping download"
+    } else {
+        mkdir "$destDir"
+        println "Downloading $destFile from $sourceUrl..."
+        sourceUrl.withInputStream { i -> file.withOutputStream { it << i } }
+    }
+
 }
 
 task testsWithNoPropagation(type: Test) {
+    configure { task ->
+        setupUnitTests(task)
+    }
     useJUnitPlatform {
         includeTags "DISABLE_PROPAGATION"
     }
-    filter {
-        setFailOnNoMatchingTests(false)
-    }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=false")
 }
+
 task unitTests(type: Test) {
+    configure { task ->
+        setupUnitTests(task)
+    }
     useJUnitPlatform {
         excludeTags "DISABLE_PROPAGATION"
     }
     filter {
+        excludeTestsMatching("*.smoke.*")
         setFailOnNoMatchingTests(false)
     }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=true")
     mustRunAfter(testsWithNoPropagation)
 }
+
+task smokeTests(type: Test) {
+    downloadOTelAgent()
+    configure { task ->
+        setupSmokeTests(task)
+    }
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("*.smoke.*")
+        setFailOnNoMatchingTests(false)
+    }
+    mustRunAfter(unitTests)
+}
+
 test {
-    dependsOn(unitTests, testsWithNoPropagation)
+    dependsOn(smokeTests, unitTests, testsWithNoPropagation)
     useJUnitPlatform()
     filter {
         includeTestsMatching("dummyfilter")
         setFailOnNoMatchingTests(false)
     }
-    mustRunAfter(unitTests)
+    mustRunAfter(smokeTests)
 }
 
 def muzzleVersions = ext.versions
@@ -75,7 +119,7 @@ muzzle {
     pass {
         group.set("org.apache.kafka")
         module.set("kafka-connect")
-        versions.set("[2.6.0,)")
+        versions.set("[3.0.1,)")
         assertInverse.set(true)
         extraDependency("com.fasterxml.jackson.core:jackson-databind:${muzzleVersions["jackson"]}")
         extraDependency("com.fasterxml.jackson.core:jackson-core:${muzzleVersions["jackson"]}")
