@@ -45,12 +45,15 @@ dependencies {
     testImplementation("io.opentelemetry.proto:opentelemetry-proto:0.13.0-alpha")
 
 }
-
-def downloadOTelAgent = {
-    def src = 'https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.13.0/opentelemetry-javaagent.jar'
+/**
+ * Downloads open telemetry agent using the version specified in the project's gradle.properties file.
+ * This is used to by smoke tests.
+ */
+def downloadOTelAgent() {
+    def src = "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${versions.opentelemetryJavaagent}/opentelemetry-javaagent.jar"
     def destdir = "$projectDir/src/test/resources"
     def destfile = "$destdir/opentelemetry-javaagent.jarfile"
-
+    println "$src"
     def sourceUrl = new URL(src)
     def file = new File(destfile)
     if (file.exists()) {
@@ -98,7 +101,7 @@ task smokeTests(type: Test) {
         includeTestsMatching("*.smoke.*")
         setFailOnNoMatchingTests(false)
     }
-    mustRunAfter(downloadOTelAgent, unitTests)
+    mustRunAfter(unitTests)
 }
 
 test {
