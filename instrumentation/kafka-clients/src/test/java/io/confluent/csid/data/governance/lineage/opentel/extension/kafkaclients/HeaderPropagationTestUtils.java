@@ -7,6 +7,8 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeaderCaptureConfiguration.HEADER_CHARSET_PROP;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeaderCaptureConfiguration.HEADER_PROPAGATION_WHITELIST_PROP;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.ConfigurationReloader;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeaderCaptureConfiguration;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -51,7 +53,7 @@ public class HeaderPropagationTestUtils {
           "non_captured_non_propagated_headerval2".getBytes(CHARSET_UTF_8))
   };
 
-  public static void setupHeaderConfiguration() {
+  public static void setupHeaderConfiguration(HeaderCaptureConfiguration headerCaptureConfiguration) {
     System.setProperty(HEADER_CAPTURE_WHITELIST_PROP,
         Arrays.stream(CAPTURE_WHITELISTED_HEADERS).map(Header::key)
             .collect(Collectors.joining(",")));
@@ -59,11 +61,13 @@ public class HeaderPropagationTestUtils {
         Arrays.stream(PROPAGATION_WHITELISTED_HEADERS).map(Header::key)
             .collect(Collectors.joining(",")));
     System.setProperty(HEADER_CHARSET_PROP, CHARSET_UTF_8.name());
+    ConfigurationReloader.reloadHeaderCaptureConfiguration(headerCaptureConfiguration);
   }
 
-  public static void cleanupHeaderConfiguration() {
+  public static void cleanupHeaderConfiguration(HeaderCaptureConfiguration headerCaptureConfiguration) {
     System.clearProperty(HEADER_CAPTURE_WHITELIST_PROP);
     System.clearProperty(HEADER_PROPAGATION_WHITELIST_PROP);
     System.clearProperty(HEADER_CHARSET_PROP);
+    ConfigurationReloader.reloadHeaderCaptureConfiguration(headerCaptureConfiguration);
   }
 }

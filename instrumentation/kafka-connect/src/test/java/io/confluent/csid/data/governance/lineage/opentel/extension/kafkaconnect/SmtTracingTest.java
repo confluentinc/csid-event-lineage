@@ -108,7 +108,7 @@ public class SmtTracingTest {
     String value = "{\"schema\":{\"type\":\"int64\",\"optional\":false},\"payload\":31}";
     commonTestUtils.produceSingleEvent(testTopic, key, value);
 
-    commonTestUtils.waitUntil(() -> instrumentation.waitForTraces(1).get(0).size() == 4);
+    commonTestUtils.waitUntil("Wait for traces", () -> instrumentation.waitForTraces(1).get(0).size() == 4);
 
     connectStandalone.stop();
 

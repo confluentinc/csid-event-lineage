@@ -6,6 +6,8 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.DOCKER_NETWORK;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
+import java.util.Properties;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.testcontainers.containers.GenericContainer;
@@ -36,7 +38,7 @@ abstract class IntegrationTestBase {
 
   private GenericContainer backend;
 
-  private GenericContainer<?> connectContainer;
+  protected GenericContainer<?> connectContainer;
 
   protected String testTopic = "connect-topic";
 
@@ -48,7 +50,8 @@ abstract class IntegrationTestBase {
 
   void setup() {
     startCollector();
-    traceAssertUtils = new TraceAssertUtils(backend.getHost(), backend.getMappedPort(COLLECTOR_CONTAINER_PORT));
+    traceAssertUtils = new TraceAssertUtils(backend.getHost(),
+        backend.getMappedPort(COLLECTOR_CONTAINER_PORT));
     commonTestUtils = new CommonTestUtils(CONNECT_TEMP_DIR);
     commonTestUtils.startKafkaContainer();
   }
@@ -71,39 +74,36 @@ abstract class IntegrationTestBase {
     backend.start();
   }
 
+  void startStandaloneConnectContainer(String... connectors) {
+    startStandaloneConnectContainer(null, connectors);
+  }
 
   @SneakyThrows
-  void startConnectContainer(String... connectors) {
-    connectContainer = buildConnectContainer(connectors);
+  void startStandaloneConnectContainer(Properties additionalExtensionProps,
+      String... connectors) {
+    GenericContainer<?> baseContainer = buildBaseConnectContainer(additionalExtensionProps);
+    connectContainer = buildConnectContainerStandalone(baseContainer, connectors);
     connectContainer.start();
   }
 
-  private GenericContainer<?> buildConnectContainer(
-      String... connectors) {
+  void startDistributedConnectContainer() {
+    startDistributedConnectContainer(null);
+  }
+
+  @SneakyThrows
+  void startDistributedConnectContainer(Properties additionalExtensionProps) {
+    GenericContainer<?> baseContainer = buildBaseConnectContainer(additionalExtensionProps);
+    connectContainer = buildConnectContainerDistributed(baseContainer);
+    connectContainer.start();
+  }
+
+  private GenericContainer<?> buildBaseConnectContainer(Properties additionalExtensionProps) {
 
     return new GenericContainer<>("confluentinc/cp-kafka-connect:" + KAFKA_CONTAINER_VERSION)
-        //.withExposedPorts(28382)
         .withNetwork(DOCKER_NETWORK)
         .withNetworkAliases("connect")
+        .withExposedPorts(28382)
         .withLogConsumer(new Slf4jLogConsumer(log))
-        .withCopyFileToContainer(MountableFile.forClasspathResource("runscript", 0777),
-            "/usr/share/runscript")
-        .withCopyFileToContainer(MountableFile.forClasspathResource("launch"),
-            "/usr/share/launch")
-        .withCopyFileToContainer(MountableFile.forClasspathResource("source_no_smt.properties"),
-            "/usr/share/props/source_no_smt.properties")
-        .withCopyFileToContainer(MountableFile.forClasspathResource("sink_no_smt.properties"),
-            "/usr/share/props/sink_no_smt.properties")
-        .withCopyFileToContainer(MountableFile.forClasspathResource("sink_with_smt.properties"),
-            "/usr/share/props/sink_with_smt.properties")
-        .withCopyFileToContainer(
-            MountableFile.forClasspathResource("source_with_smt.properties"),
-            "/usr/share/props/source_with_smt.properties")
-        .withCopyFileToContainer(MountableFile.forClasspathResource("standalone.properties"),
-            "/usr/share/props/standalone.properties")
-        .withCopyFileToContainer(
-            MountableFile.forClasspathResource("insertHeaderBytes-1.0-SNAPSHOT.jarfile"),
-            "/etc/kafka-connect/jars/insertHeaderBytes-1.0-SNAPSHOT.jar")
         .withCopyFileToContainer(
             MountableFile.forClasspathResource("opentelemetry-javaagent.jarfile"),
             "/opt/opentelemetry-javaagent.jar")
@@ -121,7 +121,9 @@ abstract class IntegrationTestBase {
                 + "-Dotel.exporter.otlp.endpoint=http://backend:8080/ "
                 + "-Devent.lineage.header-capture-whitelist=captured_propagated_header,captured_propagated_header2 "
                 + "-Devent.lineage.header-propagation-whitelist=captured_propagated_header,captured_propagated_header2 "
-                + "-Devent.lineage.header-charset=UTF-8")
+                + "-Devent.lineage.header-charset=UTF-8 "
+                + addAdditionalExtensionProps(additionalExtensionProps)
+                + " ")
         .withEnv("OTEL_JAVAAGENT_EXTENSIONS", "/opt/opentelemetry-extensions.jar")
         .withEnv("OTEL_BSP_MAX_EXPORT_BATCH", "1")
         .withEnv("OTEL_BSP_SCHEDULE_DELAY", "10")
@@ -142,8 +144,54 @@ abstract class IntegrationTestBase {
         .withEnv("CONNECT_PLUGIN_PATH", "/usr/share/java")
         .withEnv("CONNECT_LOG4J_LOGGERS",
             "org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR")
+        .waitingFor(Wait.forLogMessage(".*Kafka Connect started.*", 1));
+  }
+
+  private String addAdditionalExtensionProps(Properties additionalExtensionProps) {
+    String format = "-D%s=%s";
+    if (additionalExtensionProps != null && additionalExtensionProps.size() > 0) {
+      return additionalExtensionProps.stringPropertyNames().stream()
+          .map(propName -> String.format(format, propName,
+              additionalExtensionProps.getProperty(propName)))
+          .collect(
+              Collectors.joining(" "));
+    } else {
+      return "";
+    }
+  }
+
+  private GenericContainer<?> buildConnectContainerDistributed(GenericContainer baseContainer) {
+
+    return baseContainer
+        .withCopyFileToContainer(MountableFile.forClasspathResource("runscript-distributed", 0777),
+            "/usr/share/runscript-distributed")
+        .withCommand("sh", "/usr/share/runscript-distributed")
+        .waitingFor(Wait.forLogMessage(".*Kafka Connect started.*", 1));
+  }
+
+  private GenericContainer<?> buildConnectContainerStandalone(GenericContainer baseContainer,
+      String... connectors) {
+    return baseContainer
+        .withCopyFileToContainer(MountableFile.forClasspathResource("runscript-standalone", 0777),
+            "/usr/share/runscript-standalone")
+        .withCopyFileToContainer(MountableFile.forClasspathResource("launch"),
+            "/usr/share/launch")
+        .withCopyFileToContainer(MountableFile.forClasspathResource("source_no_smt.properties"),
+            "/usr/share/props/source_no_smt.properties")
+        .withCopyFileToContainer(MountableFile.forClasspathResource("sink_no_smt.properties"),
+            "/usr/share/props/sink_no_smt.properties")
+        .withCopyFileToContainer(MountableFile.forClasspathResource("sink_with_smt.properties"),
+            "/usr/share/props/sink_with_smt.properties")
+        .withCopyFileToContainer(
+            MountableFile.forClasspathResource("source_with_smt.properties"),
+            "/usr/share/props/source_with_smt.properties")
+        .withCopyFileToContainer(MountableFile.forClasspathResource("standalone.properties"),
+            "/usr/share/props/standalone.properties")
+        .withCopyFileToContainer(
+            MountableFile.forClasspathResource("insertHeaderBytes-1.0-SNAPSHOT.jarfile"),
+            "/etc/kafka-connect/jars/insertHeaderBytes-1.0-SNAPSHOT.jar")
         .withEnv("CONNECTORS", String.join(" ", connectors))
-        .withCommand("sh", "/usr/share/runscript")
+        .withCommand("sh", "/usr/share/runscript-standalone")
         .waitingFor(Wait.forLogMessage(".*Kafka Connect started.*", 1));
   }
 

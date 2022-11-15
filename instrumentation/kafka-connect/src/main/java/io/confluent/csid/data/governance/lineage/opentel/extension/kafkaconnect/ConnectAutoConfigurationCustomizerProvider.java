@@ -1,14 +1,20 @@
+/*
+ * Copyright 2022 Confluent Inc.
+ */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.Singletons.spanSuppressionConfiguration;
 
 import com.google.auto.service.AutoService;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.DelegatingSpanExporter;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.InheritedAttributesSpanProcessor;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.ConnectSpanFilteringSampler;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.DelegatingSpanExporter;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Configuration customizer for OpenTelemetry autoconfiguration
@@ -34,5 +40,12 @@ public class ConnectAutoConfigurationCustomizerProvider implements
                 inheritAttributeNoOverwriteKeys)));
     autoConfiguration.addSpanExporterCustomizer(
         (spanExporter, configProperties) -> new DelegatingSpanExporter(spanExporter));
+
+    Set<String> spanSuppressionBlacklist = spanSuppressionConfiguration().getSpanSuppressionBlacklist();
+    if (!spanSuppressionBlacklist.isEmpty()) {
+      autoConfiguration.addSamplerCustomizer(
+          (sampler, configProperties) -> new ConnectSpanFilteringSampler(sampler,
+              spanSuppressionBlacklist));
+    }
   }
 }

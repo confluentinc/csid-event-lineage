@@ -8,6 +8,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.H
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHandler;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.SpanHandler;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.SpanSuppressionConfiguration;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -20,11 +21,15 @@ public class Singletons {
 
   private static HeaderCaptureConfiguration HEADER_CAPTURE_CONFIGURATION = new HeaderCaptureConfiguration();
 
-    private static HeadersHandler HEADERS_HANDLER = new HeadersHandler(openTelemetryWrapper(),
-        headerCaptureConfiguration());
+  private static HeadersHandler HEADERS_HANDLER = new HeadersHandler(openTelemetryWrapper(),
+      headerCaptureConfiguration());
 
-    private static final SpanHandler SPAN_HANDLER = new SpanHandler(openTelemetryWrapper(),
-        Constants.INSTRUMENTATION_NAME_KAFKA_CLIENTS);
+  private static final SpanHandler SPAN_HANDLER = new SpanHandler(openTelemetryWrapper(),
+      Constants.INSTRUMENTATION_NAME_KAFKA_CLIENTS);
+
+  private static final SpanSuppressionConfiguration SPAN_SUPPRESSION_CONFIGURATION = new SpanSuppressionConfiguration();
+
+  private static final InterceptorHandler INTERCEPTOR_HANDLER = new InterceptorHandler(spanSuppressionConfiguration());
 
   public static OpenTelemetryWrapper openTelemetryWrapper() {
     return OPEN_TELEMETRY_WRAPPER;
@@ -40,6 +45,14 @@ public class Singletons {
 
   public static SpanHandler spanHandler() {
     return SPAN_HANDLER;
+  }
+
+  public static SpanSuppressionConfiguration spanSuppressionConfiguration() {
+    return SPAN_SUPPRESSION_CONFIGURATION;
+  }
+
+  public static InterceptorHandler interceptorHandler() {
+    return INTERCEPTOR_HANDLER;
   }
 
   /**

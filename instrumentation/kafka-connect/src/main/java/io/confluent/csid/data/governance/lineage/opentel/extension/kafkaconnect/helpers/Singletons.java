@@ -8,6 +8,7 @@ import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.H
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHandler;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.SpanHandler;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.SpanSuppressionConfiguration;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -28,6 +29,8 @@ public class Singletons {
 
   private static final ConnectHandler CONNECT_HANDLER = new ConnectHandler(headersHandler());
 
+  private static final SpanSuppressionConfiguration SPAN_SUPPRESSION_CONFIGURATION = new SpanSuppressionConfiguration();
+
   public static OpenTelemetryWrapper openTelemetryWrapper() {
     return OPEN_TELEMETRY_WRAPPER;
   }
@@ -46,6 +49,10 @@ public class Singletons {
 
   public static SpanHandler spanHandler() {
     return SPAN_HANDLER;
+  }
+
+  public static SpanSuppressionConfiguration spanSuppressionConfiguration() {
+    return SPAN_SUPPRESSION_CONFIGURATION;
   }
 
   /**

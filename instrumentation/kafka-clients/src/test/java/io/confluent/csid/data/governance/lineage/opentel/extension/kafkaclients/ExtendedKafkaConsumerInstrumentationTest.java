@@ -18,6 +18,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.TraceAssertData.trace;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients.helpers.Singletons;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.util.List;
@@ -49,12 +50,12 @@ public class ExtendedKafkaConsumerInstrumentationTest {
 
   @BeforeAll
   static void setupAll() {
-    setupHeaderConfiguration();
+    setupHeaderConfiguration(Singletons.headerCaptureConfiguration());
   }
 
   @AfterAll
   static void cleanupAll() {
-    cleanupHeaderConfiguration();
+    cleanupHeaderConfiguration(Singletons.headerCaptureConfiguration());
   }
 
   @BeforeEach

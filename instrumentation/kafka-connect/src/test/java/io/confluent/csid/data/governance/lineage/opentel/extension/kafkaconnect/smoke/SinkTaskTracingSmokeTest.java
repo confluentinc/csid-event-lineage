@@ -35,7 +35,7 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
   @BeforeEach
   void setup() {
     super.setup();
-    startConnectContainer(Connectors.SINK_WITH_SMT);
+    startStandaloneConnectContainer(Connectors.SINK_WITH_SMT);
   }
 
   @AfterEach

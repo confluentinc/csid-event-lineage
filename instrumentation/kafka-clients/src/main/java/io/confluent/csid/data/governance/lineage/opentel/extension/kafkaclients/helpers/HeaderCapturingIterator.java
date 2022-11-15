@@ -41,6 +41,14 @@ public class HeaderCapturingIterator<K, V> implements Iterator<ConsumerRecord<K,
    */
   public static <K, V> Iterator<ConsumerRecord<K, V>> wrap(
       Iterator<ConsumerRecord<K, V>> delegate, ServiceMetadata serviceMetadata) {
+    if (InterceptorSuppressionMarker.isSuppressionEnabled()) {
+      //got to unwrap the inner tracing iterator as well
+      if (delegate instanceof KafkaClientsConsumerProcessWrapper) {
+        return ((KafkaClientsConsumerProcessWrapper<Iterator<ConsumerRecord<K, V>>>) delegate).unwrap();
+      } else {
+        return delegate;
+      }
+    }
     if (KafkaClientsConsumerProcessTracing.wrappingEnabled()) {
       return new HeaderCapturingIterator<>(delegate, serviceMetadata);
     }
