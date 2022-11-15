@@ -42,7 +42,7 @@ dependencies {
     testImplementation("com.fasterxml.jackson.core:jackson-databind:${versions.jackson}")
     testImplementation("com.google.protobuf:protobuf-java-util:3.12.4")
     testImplementation("io.opentelemetry:opentelemetry-api:${versions.opentelemetry}")
-    testImplementation("io.opentelemetry.proto:opentelemetry-proto:${versions.opentelemetryJavaagentAlpha}")
+    testImplementation("io.opentelemetry.proto:opentelemetry-proto:${versions.opentelemetryProto}")
 
 }
 /**
@@ -51,16 +51,15 @@ dependencies {
  */
 def downloadOTelAgent() {
     def src = "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${versions.opentelemetryJavaagent}/opentelemetry-javaagent.jar"
-    def destdir = "$projectDir/src/test/resources"
-    def destfile = "$destdir/opentelemetry-javaagent.jarfile"
-    println "$src"
+    def destDir = "$projectDir/src/test/resources"
+    def destFile = "$destDir/opentelemetry-javaagent.jarfile"
     def sourceUrl = new URL(src)
-    def file = new File(destfile)
+    def file = new File(destFile)
     if (file.exists()) {
-        println "file $destfile already exists, skipping download"
+        println "file $destFile already exists, skipping download"
     } else {
-        mkdir "$destdir"
-        println "Downloading $destfile from $sourceUrl..."
+        mkdir "$destDir"
+        println "Downloading $destFile from $sourceUrl..."
         sourceUrl.withInputStream { i -> file.withOutputStream { it << i } }
     }
 
