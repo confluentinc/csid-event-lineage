@@ -22,11 +22,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -176,6 +179,28 @@ public class CommonTestUtils {
     Properties overrides = new Properties();
     return consumeAtLeastXEvents(keyDeserializerClass, valueDeserializerClass, topic,
         minimumNumberOfEventsToConsume, overrides);
+  }
+
+  public String getClusterId() {
+    final String[] clusterId = new String[1];
+    waitUntil(
+        () -> {
+          try {
+            clusterId[0] = getClusterIdInternal();
+          } catch (ExecutionException e) {
+            //Suppress - try again.
+          } catch (InterruptedException e) {
+            throw new RuntimeException("Interrupted fetching clusterId", e);
+          }
+          return clusterId[0] != null && clusterId[0].length() > 0;
+        });
+    return clusterId[0];
+  }
+
+  private String getClusterIdInternal() throws ExecutionException, InterruptedException {
+    try (AdminClient adminClient = KafkaAdminClient.create(getKafkaProperties(new Properties()))) {
+      return adminClient.describeCluster().clusterId().get();
+    }
   }
 
   public List<ConsumerRecord> consumeAtLeastXEvents(final Class<?> keyDeserializerClass,

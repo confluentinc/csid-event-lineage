@@ -4,8 +4,9 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.IntegrationTestBase.Connectors.SOURCE_CONNECTOR_NAME;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedServiceName;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasAttribute;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedClusterId;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedServiceName;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.DEFAULT_TIMEOUT_SECONDS;
@@ -50,7 +51,8 @@ public class SmtTracingSmokeTest extends IntegrationTestBase {
         testTopic, 1);
 
     //Looking for trace with source, smt, send spans.
-    List<Pair<Resource, Span>> expectedTrace = traceAssertUtils.findTraceBySpanNamesWithinTimeout(DEFAULT_TIMEOUT_SECONDS,
+    List<Pair<Resource, Span>> expectedTrace = traceAssertUtils.findTraceBySpanNamesWithinTimeout(
+        DEFAULT_TIMEOUT_SECONDS,
         SOURCE_TASK_NAME, SMT_TASK_NAME, SEND_TASK_NAME);
 
     assertThat(expectedTrace).as("Could not find trace with %s, %s, %s spans.", SOURCE_TASK_NAME,
@@ -62,7 +64,8 @@ public class SmtTracingSmokeTest extends IntegrationTestBase {
 
     //Check that SMT span and Producer Send span has headers captured / propagated.
     //Source task won't have that header as it's injected by SMT.
-    List<Pair<Resource, Span>> spansWithHeaders = traceAssertUtils.filterSpansBySpanNames(expectedTrace,
+    List<Pair<Resource, Span>> spansWithHeaders = traceAssertUtils.filterSpansBySpanNames(
+        expectedTrace,
         SMT_TASK_NAME, SEND_TASK_NAME);
     assertThat(spansWithHeaders.size()).as("Expected 2 spans - SMT and Send").isEqualTo(2);
     spansWithHeaders.forEach(
@@ -72,7 +75,14 @@ public class SmtTracingSmokeTest extends IntegrationTestBase {
 
     //All 3 spans should have service.name Resource attribute = Connector name
     expectedTrace.forEach(
-        resourceSpanPair -> assertSpanHasExpectedServiceName(resourceSpanPair, SOURCE_CONNECTOR_NAME));
+        resourceSpanPair -> assertSpanHasExpectedServiceName(resourceSpanPair,
+            SOURCE_CONNECTOR_NAME));
+
+    //Verify cluster id is set on Send span - won't be on any of the previous spans as Send span is first one hitting Kafka.
+    Pair<Resource, Span> sendSpan = traceAssertUtils.filterSpansBySpanNames(expectedTrace,
+        SEND_TASK_NAME).get(0);
+    String clusterId = commonTestUtils.getClusterId();
+    assertSpanHasExpectedClusterId(sendSpan, clusterId);
   }
 
 }

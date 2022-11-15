@@ -4,6 +4,7 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.IntegrationTestBase.Connectors.SOURCE_CONNECTOR_NAME;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedClusterId;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedServiceName;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.TIMEOUTS.DEFAULT_TIMEOUT_SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,7 +57,11 @@ public class SourceTaskTracingSmokeTest extends IntegrationTestBase {
     //Both spans should have service.name Resource attribute = Connector name
     expectedTrace.forEach(
         resourceSpanPair -> assertSpanHasExpectedServiceName(resourceSpanPair, SOURCE_CONNECTOR_NAME));
+
+    //Verify cluster id is set on Send span - won't be on any of the previous spans as Send span is first one hitting Kafka.
+    Pair<Resource, Span> sendSpan = traceAssertUtils.filterSpansBySpanNames(expectedTrace,
+        SEND_TASK_NAME).get(0);
+    String clusterId = commonTestUtils.getClusterId();
+    assertSpanHasExpectedClusterId(sendSpan, clusterId);
   }
-
-
 }

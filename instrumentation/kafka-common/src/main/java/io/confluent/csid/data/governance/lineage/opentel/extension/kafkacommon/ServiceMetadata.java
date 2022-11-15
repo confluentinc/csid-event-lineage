@@ -14,5 +14,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ServiceMetadata {
 
+  String clusterId;
   String serviceName;
 }

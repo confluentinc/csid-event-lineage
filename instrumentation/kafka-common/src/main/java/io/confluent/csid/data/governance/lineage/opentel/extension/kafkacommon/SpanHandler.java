@@ -35,9 +35,15 @@ public class SpanHandler {
     spanToAddTo.addEvent(eventName, eventAttributes);
   }
 
-  public void setServiceNameToSpan(String serviceName) {
+  public void captureServiceNameToCurrentSpan(String serviceName) {
     if (serviceName != null && serviceName.length() > 0) {
       openTelemetryWrapper.currentSpan().setAttribute(Constants.SERVICE_NAME_KEY, serviceName);
+    }
+  }
+
+  public void captureClusterIdToCurrentSpan(String clusterId) {
+    if (clusterId != null && clusterId.length() > 0) {
+      openTelemetryWrapper.currentSpan().setAttribute(Constants.CLUSTER_ID_KEY, clusterId);
     }
   }
 
@@ -53,8 +59,9 @@ public class SpanHandler {
   }
 
   public void captureServiceMetadataToSpan(ServiceMetadata serviceMetadata) {
-    if (serviceMetadata.getServiceName() != null) {
-      setServiceNameToSpan(serviceMetadata.getServiceName());
+    if (serviceMetadata != null) {
+      captureServiceNameToCurrentSpan(serviceMetadata.getServiceName());
+      captureClusterIdToCurrentSpan(serviceMetadata.getClusterId());
     }
   }
 }

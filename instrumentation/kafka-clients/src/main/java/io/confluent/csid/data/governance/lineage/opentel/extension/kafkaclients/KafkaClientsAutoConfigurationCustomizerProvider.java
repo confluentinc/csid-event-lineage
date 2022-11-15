@@ -1,9 +1,10 @@
-package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
+package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaclients;
 
+
+import static java.util.Collections.emptyList;
 
 import com.google.auto.service.AutoService;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.helpers.DelegatingSpanExporter;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.InheritedAttributesSpanProcessor;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
@@ -17,11 +18,8 @@ import java.util.List;
  * etc.
  */
 @AutoService(AutoConfigurationCustomizerProvider.class)
-public class ConnectAutoConfigurationCustomizerProvider implements
+public class KafkaClientsAutoConfigurationCustomizerProvider implements
     AutoConfigurationCustomizerProvider {
-
-  private final List<AttributeKey<String>> inheritAttributeKeys =
-      List.of(Constants.SERVICE_NAME_KEY);
 
   private final List<AttributeKey<String>> inheritAttributeNoOverwriteKeys =
       List.of(Constants.CLUSTER_ID_KEY);
@@ -30,9 +28,7 @@ public class ConnectAutoConfigurationCustomizerProvider implements
   public void customize(AutoConfigurationCustomizer autoConfiguration) {
     autoConfiguration.addTracerProviderCustomizer(
         (sdkTracerProviderBuilder, configProperties) -> sdkTracerProviderBuilder.addSpanProcessor(
-            new InheritedAttributesSpanProcessor(inheritAttributeKeys,
+            new InheritedAttributesSpanProcessor(emptyList(),
                 inheritAttributeNoOverwriteKeys)));
-    autoConfiguration.addSpanExporterCustomizer(
-        (spanExporter, configProperties) -> new DelegatingSpanExporter(spanExporter));
   }
 }

@@ -4,8 +4,9 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.IntegrationTestBase.Connectors.SINK_CONNECTOR_NAME;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedServiceName;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasAttribute;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedClusterId;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke.TraceAssertUtils.assertSpanHasExpectedServiceName;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER_2;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CHARSET_UTF_8;
@@ -50,7 +51,8 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
     commonTestUtils.produceSingleEvent(testTopic, key, value, CAPTURED_PROPAGATED_HEADER_2);
 
     //Looking for trace with consumer process, smt, sink spans.
-    List<Pair<Resource, Span>> expectedTrace = traceAssertUtils.findTraceBySpanNamesWithinTimeout(DEFAULT_TIMEOUT_SECONDS,
+    List<Pair<Resource, Span>> expectedTrace = traceAssertUtils.findTraceBySpanNamesWithinTimeout(
+        DEFAULT_TIMEOUT_SECONDS,
         CONSUMER_PROCESS_TASK_NAME, SMT_TASK_NAME, SINK_TASK_NAME);
 
     assertThat(expectedTrace).as("Could not find trace with %s, %s, %s spans.",
@@ -67,7 +69,8 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
             new String(CAPTURED_PROPAGATED_HEADER_2.value(), CHARSET_UTF_8)));
 
     //SMT and SINK spans should have header set by SMT captured / propagated
-    List<Pair<Resource, Span>> smtAndSinkSpans = traceAssertUtils.filterSpansBySpanNames(expectedTrace,
+    List<Pair<Resource, Span>> smtAndSinkSpans = traceAssertUtils.filterSpansBySpanNames(
+        expectedTrace,
         SMT_TASK_NAME, SINK_TASK_NAME);
     smtAndSinkSpans.forEach(
         resourceSpanPair -> assertSpanHasAttribute(resourceSpanPair.getRight(),
@@ -76,6 +79,12 @@ public class SinkTaskTracingSmokeTest extends IntegrationTestBase {
 
     //All 3 spans should have service.name Resource attribute = Connector name
     expectedTrace.forEach(
-        resourceSpanPair -> assertSpanHasExpectedServiceName(resourceSpanPair, SINK_CONNECTOR_NAME));
+        resourceSpanPair -> assertSpanHasExpectedServiceName(resourceSpanPair,
+            SINK_CONNECTOR_NAME));
+
+    //Verify Cluster id set on all 3 spans - as it should propagate from Consume span.
+    String clusterId = commonTestUtils.getClusterId();
+    expectedTrace.forEach(
+        resourceSpanPair -> assertSpanHasExpectedClusterId(resourceSpanPair, clusterId));
   }
 }

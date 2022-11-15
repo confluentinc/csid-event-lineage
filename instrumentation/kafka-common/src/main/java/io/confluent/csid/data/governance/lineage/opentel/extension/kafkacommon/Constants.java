@@ -34,6 +34,7 @@ public class Constants {
   public static final int TIMESTAMP_LENGTH = Long.BYTES;
 
   public static final AttributeKey<String> SERVICE_NAME_KEY = stringKey("service.name");
+  public static final AttributeKey<String> CLUSTER_ID_KEY = stringKey("cluster.id");
 
   /**
    * Constants for building span names
