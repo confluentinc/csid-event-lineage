@@ -1,0 +1,5 @@
+cp /usr/share/launch /etc/confluent/docker/launch
+cp /usr/share/props/* /etc/confluent/docker/
+
+chmod +x /etc/confluent/docker/launch
+/etc/confluent/docker/run
