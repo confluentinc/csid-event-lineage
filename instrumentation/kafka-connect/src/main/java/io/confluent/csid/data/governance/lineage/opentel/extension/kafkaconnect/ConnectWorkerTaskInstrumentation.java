@@ -17,8 +17,6 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 
-;
-
 /**
  * Instrumentation for sub-classes of {@link org.apache.kafka.connect.runtime.WorkerTask} class -
  * advice for {@link org.apache.kafka.connect.runtime.WorkerTask#execute()} method capturing
