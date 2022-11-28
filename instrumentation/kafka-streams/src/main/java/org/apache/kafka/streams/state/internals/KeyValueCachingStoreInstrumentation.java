@@ -12,6 +12,18 @@ import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
+/**
+ * {@link CachingKeyValueStore} instrumentation enabling cache handing overrides by advice on put
+ * and delete methods.
+ * <p>
+ * As {@link LRUCacheEntryInstrumentation} is applied to {@link LRUCacheEntry} constructor - this
+ * {@link CacheHandlerFlag} flag is used to restrict the advice to only run when LRUCacheEntry is
+ * created within the put / delete operations.
+ *
+ * @see KeyValueCachingStoreInstrumentation
+ * @see LRUCacheEntryInstrumentation
+ * @see CachingStoreInstrumentation
+ */
 public class KeyValueCachingStoreInstrumentation implements TypeInstrumentation {
 
   @Override
@@ -29,7 +41,7 @@ public class KeyValueCachingStoreInstrumentation implements TypeInstrumentation 
 
     transformer.applyAdviceToMethod(
         named("putInternal")
-           .or(named("deleteInternal")),
+            .or(named("deleteInternal")),
         KeyValueCachingStoreInstrumentation.class.getName()
             + "$EnableCacheHandlerAdvice");
 

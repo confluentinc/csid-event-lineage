@@ -5,7 +5,7 @@ package org.apache.kafka.streams.state.internals;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.stateStorePropagationHelpers;
 import static net.bytebuddy.matcher.ElementMatchers.named;
-import static org.slf4j.event.Level.DEBUG;
+import static org.slf4j.event.Level.TRACE;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.CacheHandlerFlag;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.LoggerBridge;
@@ -22,6 +22,20 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 import org.apache.commons.lang3.tuple.Pair;
 
+/**
+ * Instrumentation Advice for putAndMaybeForward methods of CachingStores - that is the method
+ * responsible for handling Flushes.
+ * <p>
+ * This advice is handling retrieval and restoration Trace Context stored by
+ * {@link LRUCacheEntryInstrumentation} during the Flush
+ * <p>
+ * operation to bridge the tracing gap introduced by disconnected Cache put and flush operations.
+ *
+ * @see org.apache.kafka.streams.state.internals.CachingKeyValueStore#putAndMaybeForward
+ * @see org.apache.kafka.streams.state.internals.CachingWindowStore#putAndMaybeForward
+ * @see org.apache.kafka.streams.state.internals.CachingSessionStore#putAndMaybeForward
+ * @see LRUCacheEntryInstrumentation
+ */
 public class CachingStoreInstrumentation implements TypeInstrumentation {
 
   @Override
@@ -42,11 +56,6 @@ public class CachingStoreInstrumentation implements TypeInstrumentation {
         named("putAndMaybeForward"),
         CachingStoreInstrumentation.class.getName()
             + "$PutAndMaybeForwardAdvice");
-    transformer.applyAdviceToMethod(
-        named("putInternal"),
-        CachingStoreInstrumentation.class.getName()
-            + "$PutInternalAdvice");
-
   }
 
   public static class PutAndMaybeForwardAdvice {
@@ -63,7 +72,7 @@ public class CachingStoreInstrumentation implements TypeInstrumentation {
           LRUCacheEntry.class, Context.class);
       Context storedContext = cacheTraceContextStore.get(
           entry.entry());
-      LoggerBridge.log(DEBUG,
+      LoggerBridge.log(TRACE,
           "Got Tracing context from cache for key {}, recordContext {}, offset {}, traceContext {}",
           entry.key(), entry.entry().context().toString(), entry.entry().context().offset(),
           (storedContext != null ? storedContext.toString() : "null"));
@@ -87,19 +96,6 @@ public class CachingStoreInstrumentation implements TypeInstrumentation {
         flushSpan.end();
         scope.close();
       }
-    }
-  }
-
-  public static class PutInternalAdvice {
-
-    @Advice.OnMethodEnter(suppress = Throwable.class)
-    public static void onEnter() {
-      CacheHandlerFlag.enable();
-    }
-
-    @Advice.OnMethodExit()
-    public static void onExit() {
-      CacheHandlerFlag.disable();
     }
   }
 }

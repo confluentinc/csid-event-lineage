@@ -7,7 +7,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
 import static net.bytebuddy.matcher.ElementMatchers.isPackagePrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
-import static org.slf4j.event.Level.DEBUG;
+import static org.slf4j.event.Level.TRACE;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.CacheHandlerFlag;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.LoggerBridge;
@@ -59,6 +59,7 @@ public class LRUCacheEntryInstrumentation implements
   }
 
   public static class ConstructorAdvice {
+
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.This LRUCacheEntry lruCacheEntry) {
@@ -66,7 +67,7 @@ public class LRUCacheEntryInstrumentation implements
         VirtualField<LRUCacheEntry, Context> contextField = VirtualField.find(LRUCacheEntry.class,
             Context.class);
         contextField.set(lruCacheEntry, openTelemetryWrapper().currentContext());
-        LoggerBridge.log(DEBUG,
+        LoggerBridge.log(TRACE,
             "Set Tracing context to cache for recordContext {}, offset {}, traceContext {} ",
             lruCacheEntry.context().toString(), lruCacheEntry.context().offset(),
             openTelemetryWrapper().currentContext());
