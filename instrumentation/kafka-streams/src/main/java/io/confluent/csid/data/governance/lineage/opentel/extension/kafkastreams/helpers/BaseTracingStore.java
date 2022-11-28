@@ -20,12 +20,17 @@ public class BaseTracingStore<T extends StateStore> extends
    * capture logic.
    */
   protected Supplier<Headers> headersAccessor = HeadersHolder::get;
-  protected final String storeName;
 
+  /**
+   * State store can be wrapped at 2 levels - Caching layer and underlying state store layer (i.e.
+   * RocksDB store)
+   * <p>
+   * This flag indicates whether this wrapping store is attached to Cache layer or not
+   */
   protected boolean isCachingStore;
+
   public BaseTracingStore(T wrapped, boolean isCachingStore) {
     super(wrapped);
     this.isCachingStore = isCachingStore;
-    this.storeName = wrapped.name();
   }
 }

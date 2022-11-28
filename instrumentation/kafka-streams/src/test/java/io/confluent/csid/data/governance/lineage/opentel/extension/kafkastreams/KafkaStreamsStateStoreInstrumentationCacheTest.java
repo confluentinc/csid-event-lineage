@@ -15,7 +15,6 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.produceChangelog;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStoreCachePut;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStoreCacheRemove;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStoreRemove;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStoreFlush;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStoreGet;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStorePut;
@@ -29,7 +28,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import lombok.SneakyThrows;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.Serdes;
@@ -45,6 +43,7 @@ import org.apache.kafka.streams.kstream.Named;
 import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.SessionWindows;
+import org.apache.kafka.streams.kstream.TimeWindows;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.Stores;
 import org.junit.jupiter.api.AfterAll;
@@ -57,10 +56,9 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Tests for tracing propagation during Stream aggregation operations that produce KTable and
- * utilize StateStore put/get . Using groupByKey().count() and groupByKey().aggregate().
+ * Tests for tracing propagation during Stream aggregation operations with caching enabled.
  */
-public class KafkaStreamsStateStoreInstrumentationAggregationTest {
+public class KafkaStreamsStateStoreInstrumentationCacheTest {
 
   @RegisterExtension
   static final AgentInstrumentationExtension instrumentation =
@@ -104,223 +102,6 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
   }
 
   @Test
-  @DisplayName("Test KStream header capture with state store operation (GroupByKey -> Aggregate)")
-  void testKStreamStateStoreHeaderCaptureWithAggregateOp() {
-
-    String key = "key";
-    String value = "value";
-
-    Header[] sentHeaders = ArrayUtils.addAll(
-        CAPTURE_WHITELISTED_HEADERS, NOT_WHITELISTED_HEADERS);
-
-    StreamsBuilder streamsBuilder = new StreamsBuilder();
-    streamsBuilder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String())).groupByKey()
-        .aggregate(() -> "", (k, v, c) -> c + "," + v.charAt(0),
-            Materialized.with(Serdes.String(), Serdes.String()))
-        .toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
-    kafkaStreams = new KafkaStreams(streamsBuilder.build(),
-        commonTestUtils.getPropertiesForStreams());
-    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
-        outputTopic);
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, value, sentHeaders);
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, value);
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, value);
-
-    commonTestUtils.consumeEvent(Serdes.String().deserializer().getClass(),
-        Serdes.String().deserializer().getClass(), outputTopic);
-
-    List<List<SpanData>> traces = instrumentation.waitForTraces(3);
-    assertTracesCaptured(traces,
-        trace().withSpans(
-            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS),
-            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS),
-            stateStorePut().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS),
-            produceChangelog(),
-            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS),
-            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)),
-        trace().withSpans(
-            produce(),
-            consume(),
-            stateStoreGet().withLink(),
-            stateStorePut(),
-            produceChangelog(),
-            produce(),
-            consume()),
-        trace().withSpans(
-            produce(),
-            consume(),
-            stateStoreGet().withLink(),
-            stateStorePut(),
-            produceChangelog(),
-            produce(),
-            consume()));
-  }
-
-
-  @Test
-  @DisplayName("Test KStream header capture with state store operation (GroupByKey -> Aggregate) using legacy KeyValueStore")
-  void testKStreamStateStoreHeaderCaptureWithAggregateOpUsingLegacyStateStore() {
-    String key = "key";
-    String value = "val";
-
-    Header[] sentHeaders = ArrayUtils.addAll(
-        CAPTURE_WHITELISTED_HEADERS, NOT_WHITELISTED_HEADERS);
-
-    StreamsBuilder streamsBuilder = new StreamsBuilder();
-    Materialized<String, String, KeyValueStore<Bytes, byte[]>> materialized = Materialized.<String, String>as(
-            Stores.persistentKeyValueStore("testStore"))
-        .withKeySerde(Serdes.String()).withValueSerde(Serdes.String());
-    streamsBuilder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String())).groupByKey()
-        .aggregate(() -> "", (k, v, c) -> c + "," + v.charAt(0), materialized)
-        .toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
-    Properties properties = commonTestUtils.getPropertiesForStreams();
-    kafkaStreams = new KafkaStreams(streamsBuilder.build(), properties);
-    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
-        outputTopic);
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, value, sentHeaders);
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, value);
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, value);
-
-    commonTestUtils.consumeEvent(Serdes.String().deserializer().getClass(),
-        Serdes.String().deserializer().getClass(), outputTopic);
-
-    List<List<SpanData>> traces = instrumentation.waitForTraces(3);
-    assertTracesCaptured(traces,
-        trace().withSpans(
-            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS),
-            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS),
-            stateStorePut().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS),
-            produceChangelog(),
-            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS),
-            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
-        trace().withSpans(
-            produce(),
-            consume(),
-            stateStoreGet().withLink(),
-            stateStorePut(),
-            produceChangelog(),
-            produce(),
-            consume()),
-        trace().withSpans(
-            produce(),
-            consume(),
-            stateStoreGet().withLink(),
-            stateStorePut(),
-            produceChangelog(),
-            produce(),
-            consume()));
-  }
-
-  @SneakyThrows
-  @Test
-  @DisplayName("Test KStream header capture with state store operation (GroupByKey -> Windowed -> Aggregate/Merge) using SessionStore")
-  void testKStreamStateStoreHeaderCaptureWithAggregateOpUsingSessionStateStore() {
-    String key = "key";
-
-    Header[] sentHeaders = ArrayUtils.addAll(
-        CAPTURE_WHITELISTED_HEADERS, NOT_WHITELISTED_HEADERS);
-
-    StreamsBuilder streamsBuilder = new StreamsBuilder();
-    streamsBuilder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String())).groupByKey()
-        .windowedBy(
-            SessionWindows.with(Duration.ofMillis(5000)))
-        .aggregate(() -> "", (k, v, c) -> c + "," + v, (k, v, c) -> c + ":" + v)
-        .toStream((k, v) -> k.key() + " : " + k.window().toString())
-        .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
-    Properties properties = commonTestUtils.getPropertiesForStreams();
-    kafkaStreams = new KafkaStreams(streamsBuilder.build(), properties);
-    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
-        outputTopic);
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, "1", sentHeaders);
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, "2");
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, "3");
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, "4");
-
-    commonTestUtils.produceSingleEvent(inputTopic, key, "5");
-
-    commonTestUtils.consumeAtLeastXEvents(Serdes.String().deserializer().getClass(),
-        Serdes.String().deserializer().getClass(), outputTopic, 5);
-    List<List<SpanData>> traces = instrumentation.waitForTraces(5);
-    assertTracesCaptured(traces,
-        trace().withSpans(
-            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS),
-            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS),
-            stateStorePut().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS),
-            produceChangelog(),
-            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS),
-            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
-                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
-        trace().withSpans(
-            produce(),
-            consume(),
-            stateStoreGet().withLink(),
-            stateStoreRemove(),
-            produceChangelog(),
-            produce(),
-            consume(),
-            stateStorePut(),
-            produceChangelog(),
-            produce(),
-            consume()),
-        trace().withSpans(
-            produce(),
-            consume(),
-            stateStoreGet().withLink(),
-            stateStoreRemove(),
-            produceChangelog(),
-            produce(),
-            consume(),
-            stateStorePut(),
-            produceChangelog(),
-            produce(),
-            consume()),
-        trace().withSpans(
-            produce(),
-            consume(),
-            stateStoreGet().withLink(),
-            stateStoreRemove(),
-            produceChangelog(),
-            produce(),
-            consume(),
-            stateStorePut(),
-            produceChangelog(),
-            produce(),
-            consume()),
-        trace().withSpans(
-            produce(),
-            consume(),
-            stateStoreGet().withLink(),
-            stateStoreRemove(),
-            produceChangelog(),
-            produce(),
-            consume(),
-            stateStorePut(),
-            produceChangelog(),
-            produce(),
-            consume())
-    );
-  }
-
-  @Test
   @DisplayName("Test KStream header capture with state store operation (FlatMap -> GroupBy -> Count Aggregate) with caching enabled")
   void testKStreamStateStoreHeaderCaptureWithAggregateAndCaching() {
     String key = "key";
@@ -340,6 +121,134 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
         .flatMapValues(val -> List.of(val.toLowerCase().split(" ")))
         .groupBy((k, val) -> val)
         .count(Named.as("WordCount"))
+        .toStream();
+    wordCount.print(Printed.toSysOut());
+    wordCount.to(outputTopic, Produced.with(Serdes.String(), Serdes.Long()));
+
+    kafkaStreams = new KafkaStreams(builder.build(), properties);
+    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
+        outputTopic);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key + "1", value, sentHeaders);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key + "2", value);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key + "1", value);
+
+    commonTestUtils.consumeAtLeastXEvents(Serdes.String().deserializer().getClass(),
+        Serdes.Long().deserializer().getClass(), outputTopic, 2);
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(3);
+    assertTracesCaptured(traces,
+        trace().withSpans(
+            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
+        trace().withSpans(
+            produce()
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume()
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
+        trace().withSpans(
+            produce()
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume()
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreFlush().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStorePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produceChangelog(),
+            produce().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreFlush().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStorePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produceChangelog(),
+            produce().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS))
+    );
+  }
+
+  @Test
+  @DisplayName("Test KStream header capture with state store operation (FlatMap -> GroupBy -> Count Aggregate) with caching enabled using Legacy KV Store")
+  void testKStreamStateStoreHeaderCaptureWithAggregateAndCachingUsingLegacyKVStore() {
+    String key = "key";
+    String value = "test data";
+
+    Header[] sentHeaders = ArrayUtils.addAll(
+        CAPTURE_WHITELISTED_HEADERS, NOT_WHITELISTED_HEADERS);
+
+    Properties properties = commonTestUtils.getPropertiesForStreams();
+    properties.setProperty(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG,
+        "20000"); // re-enable state-store cache
+    final StreamsBuilder builder = new StreamsBuilder();
+
+    Materialized<String, Long, KeyValueStore<Bytes, byte[]>> materialized = Materialized.<String, Long>as(
+            Stores.persistentKeyValueStore("testStore"))
+        .withKeySerde(Serdes.String()).withValueSerde(Serdes.Long());
+
+    final KStream<String, String> textLines = builder.stream(inputTopic,
+        Consumed.with(Serdes.String(), Serdes.String()));
+
+    KStream<String, Long> wordCount = textLines
+        .flatMapValues(val -> List.of(val.toLowerCase().split(" ")))
+        .groupBy((k, val) -> val)
+        .count(materialized)
         .toStream();
     wordCount.print(Printed.toSysOut());
     wordCount.to(outputTopic, Produced.with(Serdes.String(), Serdes.Long()));
@@ -560,6 +469,130 @@ public class KafkaStreamsStateStoreInstrumentationAggregationTest {
             stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
                 .withoutHeaders(NOT_WHITELISTED_HEADERS),
             stateStoreCacheRemove().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreFlush().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStorePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produceChangelog(),
+            produce().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS))
+    );
+  }
+
+  @Test
+  @DisplayName("Test KStream header capture with Windowed state store operation (FlatMap -> GroupBy -> WindowedBy Windows->Count Aggregate) with caching enabled")
+  void testKStreamWindowedStateStoreHeaderCaptureWithAggregateAndCaching() {
+    String key = "key";
+    String value = "test data";
+
+    Header[] sentHeaders = ArrayUtils.addAll(
+        CAPTURE_WHITELISTED_HEADERS, NOT_WHITELISTED_HEADERS);
+
+    Properties properties = commonTestUtils.getPropertiesForStreams();
+    properties.setProperty(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG,
+        "20000"); // re-enable state-store cache
+    final StreamsBuilder builder = new StreamsBuilder();
+    final KStream<String, String> textLines = builder.stream(inputTopic,
+        Consumed.with(Serdes.String(), Serdes.String()));
+
+    KStream<String, Long> wordCount = textLines
+        .flatMapValues(val -> List.of(val.toLowerCase().split(" ")))
+        .groupBy((k, val) -> val)
+        .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofMillis(5000))).count(
+            Named.as("WordCount"))
+        .toStream().map((k, v) -> new KeyValue<>(k.key() + " - " + k.window().toString(), v));
+    wordCount.print(Printed.toSysOut());
+    wordCount.to(outputTopic, Produced.with(Serdes.String(), Serdes.Long()));
+
+    kafkaStreams = new KafkaStreams(builder.build(), properties);
+    commonTestUtils.createTopologyAndStartKStream(kafkaStreams, streamsLatch, inputTopic,
+        outputTopic);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key + "1", value, sentHeaders);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key + "2", value);
+
+    commonTestUtils.produceSingleEvent(inputTopic, key + "1", value);
+
+    commonTestUtils.consumeAtLeastXEvents(Serdes.String().deserializer().getClass(),
+        Serdes.Long().deserializer().getClass(), outputTopic, 2);
+
+    List<List<SpanData>> traces = instrumentation.waitForTraces(3);
+    assertTracesCaptured(traces,
+        trace().withSpans(
+            produce().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURE_WHITELISTED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
+        trace().withSpans(
+            produce()
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume()
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS)),
+        trace().withSpans(
+            produce()
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume()
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreFlush().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStorePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produceChangelog(),
+            produce().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            produce().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            consume().withNameContaining("-repartition")
+                .withoutHeaders(NOT_WHITELISTED_HEADERS),
+            stateStoreGet().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
                 .withoutHeaders(NOT_WHITELISTED_HEADERS),
             stateStoreCachePut().withHeaders(CHARSET_UTF_8, CAPTURED_PROPAGATED_HEADERS)
                 .withoutHeaders(NOT_WHITELISTED_HEADERS),

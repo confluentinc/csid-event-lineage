@@ -3,12 +3,12 @@
  */
 package org.apache.kafka.streams.state.internals;
 
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.spanHandler;
+import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.Singletons.stateStorePropagationHelpers;
 import static net.bytebuddy.matcher.ElementMatchers.named;
-import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+import static org.slf4j.event.Level.DEBUG;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.Constants.SpanNames;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.CacheHandlerFlag;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.LoggerBridge;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
@@ -20,6 +20,7 @@ import net.bytebuddy.asm.Advice.Argument;
 import net.bytebuddy.asm.Advice.This;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
+import org.apache.commons.lang3.tuple.Pair;
 
 public class CachingStoreInstrumentation implements TypeInstrumentation {
 
@@ -38,13 +39,11 @@ public class CachingStoreInstrumentation implements TypeInstrumentation {
   @Override
   public void transform(TypeTransformer transformer) {
     transformer.applyAdviceToMethod(
-        named("putAndMaybeForward")
-            .and(takesArguments(2)),
+        named("putAndMaybeForward"),
         CachingStoreInstrumentation.class.getName()
             + "$PutAndMaybeForwardAdvice");
     transformer.applyAdviceToMethod(
-        named("putInternal")
-            .and(takesArguments(2)),
+        named("putInternal"),
         CachingStoreInstrumentation.class.getName()
             + "$PutInternalAdvice");
 
@@ -55,25 +54,27 @@ public class CachingStoreInstrumentation implements TypeInstrumentation {
     @Advice.OnMethodEnter(suppress = Throwable.class)
     public static void onEnter(
         @Argument(value = 0, readOnly = false) ThreadCache.DirtyEntry entry,
-        @This CachingKeyValueStore cachingKeyValueStore,
+        @This WrappedStateStore cachingStore,
         @Advice.Local("scope") Scope scope,
         @Advice.Local("flushSpan") Span flushSpan) {
+      byte[] value = entry.newValue();
       CacheHandlerFlag.enable();
       VirtualField<LRUCacheEntry, Context> cacheTraceContextStore = VirtualField.find(
           LRUCacheEntry.class, Context.class);
       Context storedContext = cacheTraceContextStore.get(
           entry.entry());
-      System.out.println(
-          "Got context from cache for key " + entry.key() + ", record " + entry.entry().context()
-              .toString() +
-              ", offset " + entry.entry().context().offset()
-              + ", context " + (storedContext != null ? storedContext.toString() : "null"));
+      LoggerBridge.log(DEBUG,
+          "Got Tracing context from cache for key {}, recordContext {}, offset {}, traceContext {}",
+          entry.key(), entry.entry().context().toString(), entry.entry().context().offset(),
+          (storedContext != null ? storedContext.toString() : "null"));
+
       if (storedContext != null) {
-        flushSpan = spanHandler().createAndStartSpan(
-            String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT,
-                cachingKeyValueStore.name() + "-cache", SpanNames.STATE_STORE_FLUSH),
+        Pair<Span, Scope> flushSpanAndScope = stateStorePropagationHelpers().handleStateStoreFlushTrace(
+            cachingStore.name(), value, entry.entry().context().headers(),
             storedContext);
-        scope = flushSpan.makeCurrent();
+
+        flushSpan = flushSpanAndScope.getLeft();
+        scope = flushSpanAndScope.getRight();
       }
     }
 

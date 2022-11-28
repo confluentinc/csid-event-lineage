@@ -23,7 +23,8 @@ import org.apache.kafka.streams.state.internals.SessionStoreBuilder;
  * Instrumentation for {@link SessionStoreBuilder}.
  * <p>
  * Intercepts SessionStore creation on return from {@link SessionStoreBuilder#maybeWrapCaching} and
- * wraps returned SessionStore with {@link TracingSessionStore}
+ * {@link SessionStoreBuilder#maybeWrapLogging} and wraps returned SessionStore with
+ * {@link TracingSessionStore}
  */
 public class SessionStoreBuilderInstrumentation implements TypeInstrumentation {
 
@@ -44,15 +45,16 @@ public class SessionStoreBuilderInstrumentation implements TypeInstrumentation {
         isMethod()
             .and(isPrivate())
             .and(named("maybeWrapLogging")),
-        SessionStoreBuilderInstrumentation.class.getName() + "$GetAdvice");
+        SessionStoreBuilderInstrumentation.class.getName() + "$WrapStateStoreAdvice");
     transformer.applyAdviceToMethod(
         isMethod()
             .and(isPrivate())
             .and(named("maybeWrapCaching")),
-        SessionStoreBuilderInstrumentation.class.getName() + "$GetCachingAdvice");
+        SessionStoreBuilderInstrumentation.class.getName() + "$WrapCachingStateStoreAdvice");
   }
 
-  public static class GetAdvice {
+  public static class WrapStateStoreAdvice {
+
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.Return(readOnly = false) SessionStore<Bytes, byte[]> stateStore) {
@@ -63,14 +65,17 @@ public class SessionStoreBuilderInstrumentation implements TypeInstrumentation {
     }
   }
 
-  public static class GetCachingAdvice {
+  public static class WrapCachingStateStoreAdvice {
+
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.Return(readOnly = false) SessionStore<Bytes, byte[]> stateStore) {
-      stateStore = new TracingSessionStore(stateStorePropagationHelpers(),
-          openTelemetryWrapper(),
-          stateStore,
-          true);
+      if (!(stateStore instanceof TracingSessionStore)) {
+        stateStore = new TracingSessionStore(stateStorePropagationHelpers(),
+            openTelemetryWrapper(),
+            stateStore,
+            true);
+      }
     }
   }
 }

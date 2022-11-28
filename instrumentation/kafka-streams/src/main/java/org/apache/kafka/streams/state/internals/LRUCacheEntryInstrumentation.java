@@ -7,9 +7,10 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
 import static net.bytebuddy.matcher.ElementMatchers.isPackagePrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
+import static org.slf4j.event.Level.DEBUG;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.CacheHandlerFlag;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingKeyValueStore;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.LoggerBridge;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.field.VirtualField;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
@@ -19,9 +20,15 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
 /**
- * Instrumentation for {@link KeyValueToTimestampedKeyValueByteStoreAdapter}.
+ * Instrumentation for {@link LRUCacheEntry}.
  * <p>
- * Intercepts constructor and wraps passed in KeyValueStore with {@link TracingKeyValueStore}.
+ * Contains two advices
+ * <p>
+ * ConstructorAdvice - intercepts constructor and records association between this entry and current
+ * trace context in in-memory cache.
+ * <p>
+ * HashCodeAdvice - overrides hashCode to return System.identityHashCode to enable using the object
+ * as a key in the in-memory cache.
  */
 public class LRUCacheEntryInstrumentation implements
     TypeInstrumentation {
@@ -52,7 +59,6 @@ public class LRUCacheEntryInstrumentation implements
   }
 
   public static class ConstructorAdvice {
-
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.This LRUCacheEntry lruCacheEntry) {
@@ -60,15 +66,16 @@ public class LRUCacheEntryInstrumentation implements
         VirtualField<LRUCacheEntry, Context> contextField = VirtualField.find(LRUCacheEntry.class,
             Context.class);
         contextField.set(lruCacheEntry, openTelemetryWrapper().currentContext());
-        System.out.println(
-            "Set context to cache for value " + lruCacheEntry.context().toString()
-                + ", offset "+lruCacheEntry.context().offset()+", context " + openTelemetryWrapper().currentContext());
+        LoggerBridge.log(DEBUG,
+            "Set Tracing context to cache for recordContext {}, offset {}, traceContext {} ",
+            lruCacheEntry.context().toString(), lruCacheEntry.context().offset(),
+            openTelemetryWrapper().currentContext());
       }
     }
   }
 
-
   public static class HashCodeAdvice {
+
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.Return(readOnly = false) Integer hashCode,

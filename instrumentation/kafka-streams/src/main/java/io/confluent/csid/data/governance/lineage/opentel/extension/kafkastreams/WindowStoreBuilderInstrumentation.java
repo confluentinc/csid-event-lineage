@@ -24,7 +24,8 @@ import org.apache.kafka.streams.state.internals.WindowStoreBuilder;
  * Instrumentation for {@link WindowStoreBuilder} and {@link TimestampedWindowStoreBuilder}.
  * <p>
  * Intercepts WindowStore creation on return from {@link WindowStoreBuilder#maybeWrapCaching} and
- * wraps returned WindowStore with {@link TracingWindowStore}
+ * {@link WindowStoreBuilder#maybeWrapLogging} and wraps returned WindowStore with
+ * {@link TracingWindowStore}
  */
 public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
 
@@ -70,8 +71,10 @@ public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.Return(readOnly = false) WindowStore<Bytes, byte[]> stateStore) {
-      stateStore = new TracingWindowStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
-          stateStore, true);
+      if (!(stateStore instanceof TracingWindowStore)) {
+        stateStore = new TracingWindowStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
+            stateStore, true);
+      }
     }
   }
 }

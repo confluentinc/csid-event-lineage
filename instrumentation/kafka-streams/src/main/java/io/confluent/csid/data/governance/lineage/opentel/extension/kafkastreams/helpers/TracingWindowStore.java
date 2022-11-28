@@ -46,7 +46,7 @@ public class TracingWindowStore extends
 
   @Override
   public void put(Bytes key, byte[] value, long windowStartTimestamp) {
-    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(storeName,
+    byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
         value, headersAccessor.get().toArray(), isCachingStore);
     wrapped().put(key, valueWithTrace, windowStartTimestamp);
   }
@@ -57,7 +57,7 @@ public class TracingWindowStore extends
     if (null == bytesValue) {
       return null;
     }
-    bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(storeName, bytesValue,
+    bytesValue = stateStorePropagationHelpers.handleStateStoreGetTrace(wrapped().name(), bytesValue,
         headersAccessor.get());
     return bytesValue;
   }
@@ -66,14 +66,14 @@ public class TracingWindowStore extends
   public WindowStoreIterator<byte[]> fetch(Bytes key, long timeFrom, long timeTo) {
     WindowStoreIterator<byte[]> resultIter = wrapped().fetch(key, timeFrom, timeTo);
     return new TracingWindowStoreIterator(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, storeName, headersAccessor);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
   public WindowStoreIterator<byte[]> backwardFetch(Bytes key, long timeFrom, long timeTo) {
     WindowStoreIterator<byte[]> resultIter = wrapped().backwardFetch(key, timeFrom, timeTo);
     return new TracingWindowStoreIterator(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, storeName, headersAccessor);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
@@ -82,7 +82,7 @@ public class TracingWindowStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetch(from, to, timeFrom,
         timeTo);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, storeName, headersAccessor);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
@@ -91,34 +91,34 @@ public class TracingWindowStore extends
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFetch(from, to, timeFrom,
         timeTo);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, storeName, headersAccessor);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> all() {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().all();
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, storeName, headersAccessor);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> backwardAll() {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardAll();
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, storeName, headersAccessor);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> fetchAll(long timeFrom, long timeTo) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().fetchAll(timeFrom, timeTo);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, storeName, headersAccessor);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFetchAll(long timeFrom, long timeTo) {
     KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFetchAll(timeFrom, timeTo);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
-        openTelemetryWrapper, storeName, headersAccessor);
+        openTelemetryWrapper, wrapped().name(), headersAccessor);
   }
 }

@@ -14,7 +14,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.consume;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStoreGet;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.SpanAssertData.stateStorePut;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.TraceAssertData.trace;
+import static io.opentelemetry.sdk.testing.assertj.TraceAssertData.trace;
 import static org.awaitility.Awaitility.await;
 
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;

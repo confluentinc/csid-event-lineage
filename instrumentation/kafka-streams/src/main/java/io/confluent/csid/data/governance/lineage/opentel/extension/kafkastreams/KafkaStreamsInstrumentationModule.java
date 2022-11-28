@@ -13,7 +13,9 @@ import java.util.List;
 import net.bytebuddy.matcher.ElementMatcher;
 import org.apache.kafka.streams.state.internals.CachingStoreInstrumentation;
 import org.apache.kafka.streams.state.internals.DirtyEntryInstrumentation;
+import org.apache.kafka.streams.state.internals.KeyValueCachingStoreInstrumentation;
 import org.apache.kafka.streams.state.internals.LRUCacheEntryInstrumentation;
+import org.apache.kafka.streams.state.internals.WindowAndSessionCachingStoreInstrumentation;
 
 /**
  * KafkaStreams instrumentation registration module specifies instrumentation, helper classes and
@@ -67,6 +69,8 @@ public class KafkaStreamsInstrumentationModule extends InstrumentationModule {
         new StreamTaskInstrumentation(),
         new LRUCacheEntryInstrumentation(),
         new CachingStoreInstrumentation(),
+        new KeyValueCachingStoreInstrumentation(),
+        new WindowAndSessionCachingStoreInstrumentation(),
         new DirtyEntryInstrumentation());
   }
 

@@ -24,7 +24,8 @@ import org.apache.kafka.streams.state.internals.TimestampedKeyValueStoreBuilder;
  * Instrumentation for {@link KeyValueStoreBuilder} and {@link TimestampedKeyValueStoreBuilder}.
  * <p>
  * Intercepts KeyValueStore creation on return from {@link KeyValueStoreBuilder#maybeWrapCaching}
- * and wraps returned KeyValueStore with {@link TracingKeyValueStore}
+ * and {@link KeyValueStoreBuilder#maybeWrapLogging} and wraps returned KeyValueStore with
+ * {@link TracingKeyValueStore}
  */
 public class KeyValueStoreBuilderInstrumentation implements TypeInstrumentation {
 
@@ -66,15 +67,18 @@ public class KeyValueStoreBuilderInstrumentation implements TypeInstrumentation 
           false);
     }
   }
+
   public static class WrapCachingStateStoreAdvice {
 
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.Return(readOnly = false) KeyValueStore<Bytes, byte[]> stateStore) {
-      stateStore = new TracingKeyValueStore(stateStorePropagationHelpers(),
-          openTelemetryWrapper(),
-          stateStore,
-          true);
+      if (!(stateStore instanceof TracingKeyValueStore)) {
+        stateStore = new TracingKeyValueStore(stateStorePropagationHelpers(),
+            openTelemetryWrapper(),
+            stateStore,
+            true);
+      }
     }
   }
 }

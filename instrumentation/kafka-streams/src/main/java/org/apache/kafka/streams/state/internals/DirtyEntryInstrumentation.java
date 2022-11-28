@@ -7,7 +7,6 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkas
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.CacheHandlerFlag;
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingKeyValueStore;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;
@@ -15,9 +14,9 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
 /**
- * Instrumentation for {@link KeyValueToTimestampedKeyValueByteStoreAdapter}.
+ * Instrumentation for {@link ThreadCache.DirtyEntry}.
  * <p>
- * Intercepts constructor and wraps passed in KeyValueStore with {@link TracingKeyValueStore}.
+ * Strips tracing data and restores original payload value on access to newValue field.
  */
 public class DirtyEntryInstrumentation implements
     TypeInstrumentation {
