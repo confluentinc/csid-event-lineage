@@ -117,8 +117,10 @@ public class StateStorePropagationHelpers {
    *
    * @param stateStoreName   state store name to use for Span naming
    * @param headersToCapture headers to capture into Span as attributes
+   * @param isCache          true if the state store is a cache layer
    */
-  public void handleStateStoreSessionRemoveSpan(String stateStoreName, Header[] headersToCapture, boolean isCache) {
+  public void handleStateStoreSessionRemoveSpan(String stateStoreName, Header[] headersToCapture,
+      boolean isCache) {
     String spanOp = isCache ? SpanNames.STATE_STORE_CACHE_REMOVE : SpanNames.STATE_STORE_REMOVE;
 
     String spanName = String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT, stateStoreName,
@@ -158,9 +160,11 @@ public class StateStorePropagationHelpers {
    * @param stateStoreName state store name to use for Span naming
    * @param bytesValue     byte[] of the value (normally with merged tracing / header data) being
    *                       deleted
+   * @param isCache        true if the state store is a cache layer
    * @return raw value bytes with tracing data removed.
    */
-  public byte[] handleStateStoreDeleteTrace(String stateStoreName, byte[] bytesValue, boolean isCache) {
+  public byte[] handleStateStoreDeleteTrace(String stateStoreName, byte[] bytesValue,
+      boolean isCache) {
 
     if (!hasTracingInfoAttached(bytesValue)) {
       Span deleteSpan = spanHandler.createAndStartSpan(
@@ -259,6 +263,7 @@ public class StateStorePropagationHelpers {
    * @param value          byte[] of the value being put into state store
    * @param headers        current processor context headers to filter according to configured
    *                       whitelists, prepend to value and capture as Span attributes
+   * @param isCache        true if the state store is a cache layer
    * @return byte array consisting of trace, header information and value
    */
   public byte[] handleStateStorePutTrace(String stateStoreName, byte[] value, Header[] headers,
@@ -286,6 +291,66 @@ public class StateStorePropagationHelpers {
     return value;
   }
 
+
+  /**
+   * Handles StateStore Cache Flush operations
+   * <p>
+   * Creates a new StateStore Cache Flush Span as a child of given parent Span.
+   * <p>
+   * Records headers as attributes of the StateStore Cache Flush Span.
+   * <p>
+   * Handles header propagation onto given Headers object according to configured whitelist
+   *
+   * @param stateStoreName         state store name to use for Span naming
+   * @param bytesValue             byte[] of the value (normally with merged tracing / header data)
+   *                               being flushed
+   * @param headersToPropagateOnto Headers object to propagate/merge whitelisted headers onto
+   * @param parentContext          parent context to use for creating the new Span
+   * @return Pair of newly created Span and associated Scope objects
+   */
+  public Pair<Span, Scope> handleStateStoreFlushTrace(String stateStoreName, byte[] bytesValue,
+      Headers headersToPropagateOnto, Context parentContext) {
+    if (bytesValue == null) {
+      return Pair.of(null, null);
+    }
+
+    Span flushSpan = spanHandler.createAndStartSpan(
+        String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT, stateStoreName,
+            SpanNames.STATE_STORE_FLUSH), parentContext);
+    Scope flushScope = flushSpan.makeCurrent();
+
+    if (hasTracingInfoAttached(bytesValue)) {
+      Pair<List<Header>, byte[]> headersAndStrippedValue = headersHandler.extractHeaders(
+          bytesValue);
+      List<Header> extractedHeaders = headersAndStrippedValue.getLeft();
+      Header[] allOtherHeaders = extractedHeaders.stream()
+          .filter(header -> !header.key().equals(TRACING_HEADER)).toArray(Header[]::new);
+
+      Header[] headersToPropagate = headersHandler.filterHeaders(allOtherHeaders,
+          headerCaptureConfiguration.getHeaderPropagationWhitelist());
+      RecordHeaders headers = new RecordHeaders(HeadersHolder.get());
+      headersHandler.mergeHeaders(headers, headersToPropagate);
+      HeadersHolder.store(headers);
+      headersHandler.mergeHeaders(headersToPropagateOnto, headersToPropagate);
+      headersHandler.captureWhitelistedHeadersAsAttributesToCurrentSpan(allOtherHeaders);
+    }
+    return Pair.of(flushSpan, flushScope);
+  }
+
+  /**
+   * Restores original payload value by stripping trace bytes from it if tracing magic bytes are
+   * present, returns unchanged otherwise.
+   *
+   * @param value byte[] of the payload with tracing bytes
+   * @return original byte[] of the payload with tracing bytes stripped
+   */
+  public byte[] restoreRawValue(byte[] value) {
+    byte[] restored = value;
+    if (hasTracingInfoAttached(value)) {
+      restored = headersHandler.extractHeaders(value).getRight();
+    }
+    return restored;
+  }
 
   private void recordStateStoreGetSpanWithHeaders(String stateStoreName,
       String storedTraceIdentifier, Header[] headersToCapture) {
@@ -341,7 +406,7 @@ public class StateStorePropagationHelpers {
 
   private void recordStateStoreDeleteSpan(String stateStoreName,
       String storedTraceIdentifier, Header[] headersToCapture, boolean isCache) {
-    String spanOp = isCache? SpanNames.STATE_STORE_CACHE_DELETE : SpanNames.STATE_STORE_DELETE;
+    String spanOp = isCache ? SpanNames.STATE_STORE_CACHE_DELETE : SpanNames.STATE_STORE_DELETE;
     String spanName = String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT, stateStoreName,
         SpanNames.STATE_STORE_DELETE);
 
@@ -376,39 +441,4 @@ public class StateStorePropagationHelpers {
     currentInScope.makeCurrent();
   }
 
-  public Pair<Span, Scope> handleStateStoreFlushTrace(String stateStoreName, byte[] bytesValue,
-      Headers headersToPropagateOnto, Context parentContext) {
-    if (bytesValue == null) {
-      return Pair.of(null, null);
-    }
-    Span flushSpan = spanHandler.createAndStartSpan(
-        String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT, stateStoreName,
-            SpanNames.STATE_STORE_FLUSH), parentContext);
-    Scope flushScope = flushSpan.makeCurrent();
-
-    if (hasTracingInfoAttached(bytesValue)) {
-      Pair<List<Header>, byte[]> headersAndStrippedValue = headersHandler.extractHeaders(
-          bytesValue);
-      List<Header> extractedHeaders = headersAndStrippedValue.getLeft();
-      Header[] allOtherHeaders = extractedHeaders.stream()
-          .filter(header -> !header.key().equals(TRACING_HEADER)).toArray(Header[]::new);
-
-      Header[] headersToPropagate = headersHandler.filterHeaders(allOtherHeaders,
-          headerCaptureConfiguration.getHeaderPropagationWhitelist());
-      RecordHeaders headers = new RecordHeaders(HeadersHolder.get());
-      headersHandler.mergeHeaders(headers, headersToPropagate);
-      HeadersHolder.store(headers);
-      headersHandler.mergeHeaders(headersToPropagateOnto, headersToPropagate);
-      headersHandler.captureWhitelistedHeadersAsAttributesToCurrentSpan(allOtherHeaders);
-    }
-    return Pair.of(flushSpan, flushScope);
-  }
-
-  public byte[] restoreRawValue(byte[] value) {
-    byte[] restored = value;
-    if (hasTracingInfoAttached(value)) {
-      restored = headersHandler.extractHeaders(value).getRight();
-    }
-    return restored;
-  }
 }
