@@ -7,7 +7,7 @@ def config = jobConfig {
 }
 
 def publishStep(String vaultSecret) {
-    withGradleInit(["gradle/${vaultSecret}", "settings_file", "${env.WORKSPACE}/init.gradle", "GRADLE_NEXUS_SETTINGS"]) {
+    withGradleFile(["gradle/${vaultSecret}", "settings_file", "${env.WORKSPACE}/init.gradle", "GRADLE_NEXUS_SETTINGS"]) {
         sh "./gradlew --init-script ${GRADLE_NEXUS_SETTINGS} --no-daemon publish"
     }
 }
