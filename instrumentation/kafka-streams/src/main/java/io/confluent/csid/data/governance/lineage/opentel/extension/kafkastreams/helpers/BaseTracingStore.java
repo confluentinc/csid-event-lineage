@@ -1,5 +1,6 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CACHE_LAYER;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHolder;
 import java.util.function.Supplier;
 import org.apache.kafka.common.header.Headers;
@@ -27,9 +28,9 @@ public class BaseTracingStore<T extends StateStore> extends
    * <p>
    * This flag indicates whether this wrapping store is attached to Cache layer or not
    */
-  protected boolean isCachingStore;
+  protected CACHE_LAYER isCachingStore;
 
-  public BaseTracingStore(T wrapped, boolean isCachingStore) {
+  public BaseTracingStore(T wrapped, CACHE_LAYER isCachingStore) {
     super(wrapped);
     this.isCachingStore = isCachingStore;
   }

@@ -9,6 +9,7 @@ import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CACHE_LAYER;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingWindowStore;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -62,7 +63,7 @@ public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
     public static void onExit(
         @Advice.Return(readOnly = false) WindowStore<Bytes, byte[]> stateStore) {
       stateStore = new TracingWindowStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
-          stateStore, false);
+          stateStore, CACHE_LAYER.NO);
     }
   }
 
@@ -73,7 +74,7 @@ public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
         @Advice.Return(readOnly = false) WindowStore<Bytes, byte[]> stateStore) {
       if (!(stateStore instanceof TracingWindowStore)) {
         stateStore = new TracingWindowStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
-            stateStore, true);
+            stateStore, CACHE_LAYER.YES);
       }
     }
   }

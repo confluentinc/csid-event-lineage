@@ -9,6 +9,7 @@ import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CACHE_LAYER;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingSessionStore;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -61,7 +62,7 @@ public class SessionStoreBuilderInstrumentation implements TypeInstrumentation {
       stateStore = new TracingSessionStore(stateStorePropagationHelpers(),
           openTelemetryWrapper(),
           stateStore,
-          false);
+          CACHE_LAYER.NO);
     }
   }
 
@@ -74,7 +75,7 @@ public class SessionStoreBuilderInstrumentation implements TypeInstrumentation {
         stateStore = new TracingSessionStore(stateStorePropagationHelpers(),
             openTelemetryWrapper(),
             stateStore,
-            true);
+            CACHE_LAYER.YES);
       }
     }
   }
