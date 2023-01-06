@@ -3,7 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CACHE_LAYER;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
 import java.util.ArrayList;
@@ -30,7 +30,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
   public TracingKeyValueStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
       KeyValueStore<Bytes, byte[]> wrapped,
-      CACHE_LAYER isCachingStore) {
+      StateStoreCachingFeature isCachingStore) {
     super(wrapped, isCachingStore);
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;

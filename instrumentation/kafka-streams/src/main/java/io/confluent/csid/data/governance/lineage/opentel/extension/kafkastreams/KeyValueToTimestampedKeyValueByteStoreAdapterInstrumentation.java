@@ -9,7 +9,7 @@ import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
 import static net.bytebuddy.matcher.ElementMatchers.isPackagePrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
-import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CACHE_LAYER;
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingKeyValueStore;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -56,7 +56,7 @@ public class KeyValueToTimestampedKeyValueByteStoreAdapterInstrumentation implem
     public static void onEnter(
         @Advice.Argument(value = 0, readOnly = false) KeyValueStore<Bytes, byte[]> store) {
       store = new TracingKeyValueStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
-          store, CACHE_LAYER.NO);
+          store, StateStoreCachingFeature.NO_CACHING);
     }
   }
 }

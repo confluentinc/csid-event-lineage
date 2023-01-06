@@ -117,12 +117,12 @@ public class StateStorePropagationHelpers {
    *
    * @param stateStoreName   state store name to use for Span naming
    * @param headersToCapture headers to capture into Span as attributes
-   * @param isCache          CACHE_LAYER.YES if the state store is a cache layer CACHE_LAYER.NO
-   *                         otherwise
+   * @param isCache          StateStoreCachingFeature.WITH_CACHING if the state store is a caching layer
+   *                         StateStoreCachingFeature.NO_CACHING otherwise
    */
   public void handleStateStoreSessionRemoveSpan(String stateStoreName, Header[] headersToCapture,
-      CACHE_LAYER isCache) {
-    String spanOp = isCache == CACHE_LAYER.YES ? SpanNames.STATE_STORE_CACHE_REMOVE
+      StateStoreCachingFeature isCache) {
+    String spanOp = isCache == StateStoreCachingFeature.WITH_CACHING ? SpanNames.STATE_STORE_CACHE_REMOVE
         : SpanNames.STATE_STORE_REMOVE;
 
     String spanName = String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT, stateStoreName,
@@ -162,12 +162,12 @@ public class StateStorePropagationHelpers {
    * @param stateStoreName state store name to use for Span naming
    * @param bytesValue     byte[] of the value (normally with merged tracing / header data) being
    *                       deleted
-   * @param isCache        CACHE_LAYER.YES if the state store is a cache layer CACHE_LAYER.NO
-   *                       otherwise
+   * @param isCache        StateStoreCachingFeature.WITH_CACHING if the state store is a caching layer
+   *                       StateStoreCachingFeature.NO_CACHING otherwise
    * @return raw value bytes with tracing data removed.
    */
   public byte[] handleStateStoreDeleteTrace(String stateStoreName, byte[] bytesValue,
-      CACHE_LAYER isCache) {
+      StateStoreCachingFeature isCache) {
 
     if (!hasTracingInfoAttached(bytesValue)) {
       Span deleteSpan = spanHandler.createAndStartSpan(
@@ -266,12 +266,12 @@ public class StateStorePropagationHelpers {
    * @param value          byte[] of the value being put into state store
    * @param headers        current processor context headers to filter according to configured
    *                       whitelists, prepend to value and capture as Span attributes
-   * @param isCache        CACHE_LAYER.YES if the state store is a cache layer CACHE_LAYER.NO
-   *                       otherwise
+   * @param isCache        StateStoreCachingFeature.WITH_CACHING if the state store is a caching layer
+   *                       StateStoreCachingFeature.NO_CACHING otherwise
    * @return byte array consisting of trace, header information and value
    */
   public byte[] handleStateStorePutTrace(String stateStoreName, byte[] value, Header[] headers,
-      CACHE_LAYER isCache) {
+      StateStoreCachingFeature isCache) {
     if (hasTracingInfoAttached(value)) {
       return value;
     }
@@ -391,9 +391,10 @@ public class StateStorePropagationHelpers {
   }
 
   private void recordStateStorePutSpanWithHeaders(String stateStoreName, String traceIdentifier,
-      Header[] headers, CACHE_LAYER isCache) {
+      Header[] headers, StateStoreCachingFeature isCache) {
     String spanOp =
-        CACHE_LAYER.YES == isCache ? SpanNames.STATE_STORE_CACHE_PUT : SpanNames.STATE_STORE_PUT;
+        StateStoreCachingFeature.WITH_CACHING == isCache ? SpanNames.STATE_STORE_CACHE_PUT
+            : SpanNames.STATE_STORE_PUT;
     String spanName = String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT, stateStoreName,
         spanOp);
     spanHandler.addEventToSpan(openTelemetryWrapper.currentSpan(), spanName,
@@ -410,8 +411,8 @@ public class StateStorePropagationHelpers {
 
 
   private void recordStateStoreDeleteSpan(String stateStoreName,
-      String storedTraceIdentifier, Header[] headersToCapture, CACHE_LAYER isCache) {
-    String spanOp = CACHE_LAYER.YES == isCache ? SpanNames.STATE_STORE_CACHE_DELETE
+      String storedTraceIdentifier, Header[] headersToCapture, StateStoreCachingFeature isCache) {
+    String spanOp = StateStoreCachingFeature.WITH_CACHING == isCache ? SpanNames.STATE_STORE_CACHE_DELETE
         : SpanNames.STATE_STORE_DELETE;
     String spanName = String.format(SpanNames.STATE_STORE_SPAN_NAME_FORMAT, stateStoreName,
         SpanNames.STATE_STORE_DELETE);

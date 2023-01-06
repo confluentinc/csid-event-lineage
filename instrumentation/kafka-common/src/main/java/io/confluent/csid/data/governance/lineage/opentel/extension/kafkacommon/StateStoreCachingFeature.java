@@ -3,7 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon;
 
-public enum CACHE_LAYER {
-  YES,
-  NO
+public enum StateStoreCachingFeature {
+  WITH_CACHING,
+  NO_CACHING
 }
