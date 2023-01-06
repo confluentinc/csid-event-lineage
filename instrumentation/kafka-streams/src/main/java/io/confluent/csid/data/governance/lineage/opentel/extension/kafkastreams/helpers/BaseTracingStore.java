@@ -1,3 +1,6 @@
+/*
+ * Copyright 2022 Confluent Inc.
+ */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.CACHE_LAYER;
