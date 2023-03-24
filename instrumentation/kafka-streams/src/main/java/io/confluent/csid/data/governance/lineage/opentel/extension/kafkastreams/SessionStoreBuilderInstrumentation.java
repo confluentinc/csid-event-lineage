@@ -9,6 +9,7 @@ import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingSessionStore;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -23,7 +24,8 @@ import org.apache.kafka.streams.state.internals.SessionStoreBuilder;
  * Instrumentation for {@link SessionStoreBuilder}.
  * <p>
  * Intercepts SessionStore creation on return from {@link SessionStoreBuilder#maybeWrapCaching} and
- * wraps returned SessionStore with {@link TracingSessionStore}
+ * {@link SessionStoreBuilder#maybeWrapLogging} and wraps returned SessionStore with
+ * {@link TracingSessionStore}
  */
 public class SessionStoreBuilderInstrumentation implements TypeInstrumentation {
 
@@ -40,22 +42,41 @@ public class SessionStoreBuilderInstrumentation implements TypeInstrumentation {
    */
   @Override
   public void transform(TypeTransformer transformer) {
-
+    transformer.applyAdviceToMethod(
+        isMethod()
+            .and(isPrivate())
+            .and(named("maybeWrapLogging")),
+        SessionStoreBuilderInstrumentation.class.getName() + "$WrapStateStoreAdvice");
     transformer.applyAdviceToMethod(
         isMethod()
             .and(isPrivate())
             .and(named("maybeWrapCaching")),
-        SessionStoreBuilderInstrumentation.class.getName() + "$GetAdvice");
+        SessionStoreBuilderInstrumentation.class.getName() + "$WrapCachingStateStoreAdvice");
   }
 
-  public static class GetAdvice {
+  public static class WrapStateStoreAdvice {
 
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void onExit(
         @Advice.Return(readOnly = false) SessionStore<Bytes, byte[]> stateStore) {
       stateStore = new TracingSessionStore(stateStorePropagationHelpers(),
           openTelemetryWrapper(),
-          stateStore);
+          stateStore,
+          StateStoreCachingFeature.NO_CACHING);
+    }
+  }
+
+  public static class WrapCachingStateStoreAdvice {
+
+    @Advice.OnMethodExit(suppress = Throwable.class)
+    public static void onExit(
+        @Advice.Return(readOnly = false) SessionStore<Bytes, byte[]> stateStore) {
+      if (!(stateStore instanceof TracingSessionStore)) {
+        stateStore = new TracingSessionStore(stateStorePropagationHelpers(),
+            openTelemetryWrapper(),
+            stateStore,
+            StateStoreCachingFeature.WITH_CACHING);
+      }
     }
   }
 }

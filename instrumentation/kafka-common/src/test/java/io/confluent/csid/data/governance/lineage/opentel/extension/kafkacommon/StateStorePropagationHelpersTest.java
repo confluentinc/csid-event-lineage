@@ -148,7 +148,7 @@ class StateStorePropagationHelpersTest {
     when(mockStateStoreDeleteSpan.makeCurrent()).thenReturn(mockSpanScope);
     doNothing().when(mockSpanScope).close();
 
-    classUnderTest.handleStateStoreDeleteTrace(storeName, valueAndTrace);
+    classUnderTest.handleStateStoreDeleteTrace(storeName, valueAndTrace, StateStoreCachingFeature.NO_CACHING);
     verify(mockSpanHandler).addEventToSpan(mockCurrentSpan, expectedSpanName,
         Attributes.of(
             AttributeKey.stringKey(TRACING_HEADER), storedTraceId));
@@ -250,7 +250,7 @@ class StateStorePropagationHelpersTest {
     doNothing().when(mockSpanScope).close();
 
     classUnderTest.handleStateStorePutTrace(storeName, value.getBytes(StandardCharsets.UTF_8),
-        headers);
+        headers, StateStoreCachingFeature.NO_CACHING);
 
     verify(mockSpanHandler).addEventToSpan(mockCurrentSpan, expectedSpanName,
         Attributes.of(

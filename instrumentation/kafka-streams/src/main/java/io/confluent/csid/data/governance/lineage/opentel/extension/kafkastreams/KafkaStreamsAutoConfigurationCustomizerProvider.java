@@ -1,5 +1,7 @@
+/*
+ * Copyright 2022 Confluent Inc.
+ */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams;
-
 
 import static java.util.Collections.emptyList;
 

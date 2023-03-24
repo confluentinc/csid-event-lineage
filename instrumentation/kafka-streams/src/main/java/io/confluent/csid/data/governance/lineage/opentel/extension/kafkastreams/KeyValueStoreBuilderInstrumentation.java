@@ -9,6 +9,7 @@ import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingKeyValueStore;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -24,7 +25,8 @@ import org.apache.kafka.streams.state.internals.TimestampedKeyValueStoreBuilder;
  * Instrumentation for {@link KeyValueStoreBuilder} and {@link TimestampedKeyValueStoreBuilder}.
  * <p>
  * Intercepts KeyValueStore creation on return from {@link KeyValueStoreBuilder#maybeWrapCaching}
- * and wraps returned KeyValueStore with {@link TracingKeyValueStore}
+ * and {@link KeyValueStoreBuilder#maybeWrapLogging} and wraps returned KeyValueStore with
+ * {@link TracingKeyValueStore}
  */
 public class KeyValueStoreBuilderInstrumentation implements TypeInstrumentation {
 
@@ -46,8 +48,13 @@ public class KeyValueStoreBuilderInstrumentation implements TypeInstrumentation 
     transformer.applyAdviceToMethod(
         isMethod()
             .and(isPrivate())
-            .and(named("maybeWrapCaching")),
+            .and(named("maybeWrapLogging")),
         KeyValueStoreBuilderInstrumentation.class.getName() + "$WrapStateStoreAdvice");
+    transformer.applyAdviceToMethod(
+        isMethod()
+            .and(isPrivate())
+            .and(named("maybeWrapCaching")),
+        KeyValueStoreBuilderInstrumentation.class.getName() + "$WrapCachingStateStoreAdvice");
   }
 
   public static class WrapStateStoreAdvice {
@@ -57,7 +64,22 @@ public class KeyValueStoreBuilderInstrumentation implements TypeInstrumentation 
         @Advice.Return(readOnly = false) KeyValueStore<Bytes, byte[]> stateStore) {
       stateStore = new TracingKeyValueStore(stateStorePropagationHelpers(),
           openTelemetryWrapper(),
-          stateStore);
+          stateStore,
+          StateStoreCachingFeature.NO_CACHING);
+    }
+  }
+
+  public static class WrapCachingStateStoreAdvice {
+
+    @Advice.OnMethodExit(suppress = Throwable.class)
+    public static void onExit(
+        @Advice.Return(readOnly = false) KeyValueStore<Bytes, byte[]> stateStore) {
+      if (!(stateStore instanceof TracingKeyValueStore)) {
+        stateStore = new TracingKeyValueStore(stateStorePropagationHelpers(),
+            openTelemetryWrapper(),
+            stateStore,
+            StateStoreCachingFeature.WITH_CACHING);
+      }
     }
   }
 }

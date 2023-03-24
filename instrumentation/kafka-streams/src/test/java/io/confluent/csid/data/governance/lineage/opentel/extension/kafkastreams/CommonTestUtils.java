@@ -6,6 +6,7 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams
 import static java.util.Collections.singleton;
 import static org.awaitility.Awaitility.await;
 
+import io.opentelemetry.sdk.testing.assertj.TraceAssertData;
 import io.opentelemetry.sdk.testing.assertj.TracesAssert;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.io.File;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -94,6 +96,7 @@ public class CommonTestUtils {
         Serdes.String().getClass().getName());
     props.setProperty(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
         Serdes.String().getClass().getName());
+    props.setProperty(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG,"500");
     props.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "100");
     props.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
     props.setProperty(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0"); // disable ktable cache
@@ -173,8 +176,11 @@ public class CommonTestUtils {
   }
 
   static void assertTracesCaptured(List<List<SpanData>> traces, TraceAssertData... expectations) {
-    TracesAssert.assertThat(traces).hasSize(expectations.length)
-        .hasTracesSatisfyingExactly(expectations);
+    TracesAssert.assertThat(traces).hasSize(expectations.length);
+    List<Consumer<List<SpanData>>> assertionsList = Arrays.asList(expectations);
+    for (int i = 0; i < assertionsList.size(); i++) {
+      assertionsList.get(i).accept(traces.get(i));
+    }
   }
 
   public void createTopologyAndStartKStream(KafkaStreams kafkaStreams, CountDownLatch streamsLatch,

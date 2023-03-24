@@ -3,9 +3,9 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
-import java.time.Instant;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -28,8 +28,9 @@ public class TracingWindowStore extends
 
   public TracingWindowStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
-      WindowStore<Bytes, byte[]> wrapped) {
-    super(wrapped);
+      WindowStore<Bytes, byte[]> wrapped,
+      StateStoreCachingFeature isCachingStore) {
+    super(wrapped, isCachingStore);
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;
   }
@@ -47,7 +48,7 @@ public class TracingWindowStore extends
   @Override
   public void put(Bytes key, byte[] value, long windowStartTimestamp) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
-        value, headersAccessor.get().toArray());
+        value, headersAccessor.get().toArray(), isCachingStore);
     wrapped().put(key, valueWithTrace, windowStartTimestamp);
   }
 

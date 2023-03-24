@@ -9,6 +9,7 @@ import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers.TracingWindowStore;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -24,7 +25,8 @@ import org.apache.kafka.streams.state.internals.WindowStoreBuilder;
  * Instrumentation for {@link WindowStoreBuilder} and {@link TimestampedWindowStoreBuilder}.
  * <p>
  * Intercepts WindowStore creation on return from {@link WindowStoreBuilder#maybeWrapCaching} and
- * wraps returned WindowStore with {@link TracingWindowStore}
+ * {@link WindowStoreBuilder#maybeWrapLogging} and wraps returned WindowStore with
+ * {@link TracingWindowStore}
  */
 public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
 
@@ -46,8 +48,13 @@ public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
     transformer.applyAdviceToMethod(
         isMethod()
             .and(isPrivate())
-            .and(named("maybeWrapCaching")),
+            .and(named("maybeWrapLogging")),
         WindowStoreBuilderInstrumentation.class.getName() + "$GetAdvice");
+    transformer.applyAdviceToMethod(
+        isMethod()
+            .and(isPrivate())
+            .and(named("maybeWrapCaching")),
+        WindowStoreBuilderInstrumentation.class.getName() + "$GetCachingAdvice");
   }
 
   public static class GetAdvice {
@@ -56,7 +63,19 @@ public class WindowStoreBuilderInstrumentation implements TypeInstrumentation {
     public static void onExit(
         @Advice.Return(readOnly = false) WindowStore<Bytes, byte[]> stateStore) {
       stateStore = new TracingWindowStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
-          stateStore);
+          stateStore, StateStoreCachingFeature.NO_CACHING);
+    }
+  }
+
+  public static class GetCachingAdvice {
+
+    @Advice.OnMethodExit(suppress = Throwable.class)
+    public static void onExit(
+        @Advice.Return(readOnly = false) WindowStore<Bytes, byte[]> stateStore) {
+      if (!(stateStore instanceof TracingWindowStore)) {
+        stateStore = new TracingWindowStore(stateStorePropagationHelpers(), openTelemetryWrapper(),
+            stateStore, StateStoreCachingFeature.WITH_CACHING);
+      }
     }
   }
 }

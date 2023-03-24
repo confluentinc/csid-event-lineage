@@ -3,6 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
 import java.util.ArrayList;
@@ -28,8 +29,9 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
 
   public TracingKeyValueStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
-      KeyValueStore<Bytes, byte[]> wrapped) {
-    super(wrapped);
+      KeyValueStore<Bytes, byte[]> wrapped,
+      StateStoreCachingFeature isCachingStore) {
+    super(wrapped, isCachingStore);
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;
   }
@@ -47,7 +49,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
   @Override
   public void put(Bytes key, byte[] value) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
-        value, headersAccessor.get().toArray());
+        value, headersAccessor.get().toArray(), isCachingStore);
     wrapped().put(key, valueWithTrace);
   }
 
@@ -55,7 +57,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
   @Override
   public byte[] putIfAbsent(Bytes key, byte[] value) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
-        value, headersAccessor.get().toArray());
+        value, headersAccessor.get().toArray(), isCachingStore);
     return wrapped().putIfAbsent(key, valueWithTrace);
   }
 
@@ -65,7 +67,7 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
     for (KeyValue<Bytes, byte[]> entry : entries) {
       byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(
           wrapped().name(),
-          entry.value, headersAccessor.get().toArray());
+          entry.value, headersAccessor.get().toArray(), isCachingStore);
       tracedValueList.add(new KeyValue<>(entry.key, valueWithTrace));
     }
     wrapped().putAll(tracedValueList);
@@ -75,10 +77,10 @@ public class TracingKeyValueStore extends BaseTracingStore<KeyValueStore<Bytes, 
   public byte[] delete(Bytes key) {
     byte[] deletedValue = wrapped().delete(key);
     if (null == deletedValue) {
-      return deletedValue;
+      return null;
     }
     deletedValue = stateStorePropagationHelpers.handleStateStoreDeleteTrace(wrapped().name(),
-        deletedValue);
+        deletedValue, isCachingStore);
     return deletedValue;
   }
 

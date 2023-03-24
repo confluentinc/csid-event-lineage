@@ -3,6 +3,7 @@
  */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.OpenTelemetryWrapper;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStorePropagationHelpers;
 import org.apache.kafka.common.utils.Bytes;
@@ -26,8 +27,9 @@ public class TracingSessionStore extends
 
   public TracingSessionStore(StateStorePropagationHelpers stateStorePropagationHelpers,
       OpenTelemetryWrapper openTelemetryWrapper,
-      SessionStore<Bytes, byte[]> wrapped) {
-    super(wrapped);
+      SessionStore<Bytes, byte[]> wrapped,
+      StateStoreCachingFeature isCachingStore) {
+    super(wrapped, isCachingStore);
     this.stateStorePropagationHelpers = stateStorePropagationHelpers;
     this.openTelemetryWrapper = openTelemetryWrapper;
   }
@@ -72,7 +74,8 @@ public class TracingSessionStore extends
   @Override
   public KeyValueIterator<Windowed<Bytes>, byte[]> backwardFindSessions(Bytes keyFrom, Bytes keyTo,
       long earliestSessionEndTime, long latestSessionStartTime) {
-    KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFindSessions(keyFrom, keyTo,
+    KeyValueIterator<Windowed<Bytes>, byte[]> resultIter = wrapped().backwardFindSessions(keyFrom,
+        keyTo,
         earliestSessionEndTime, latestSessionStartTime);
     return new TracingKeyValueIterator<>(resultIter, stateStorePropagationHelpers,
         openTelemetryWrapper, wrapped().name(), headersAccessor);
@@ -92,14 +95,14 @@ public class TracingSessionStore extends
   @Override
   public void remove(Windowed<Bytes> sessionKey) {
     stateStorePropagationHelpers.handleStateStoreSessionRemoveSpan(wrapped().name(),
-        headersAccessor.get().toArray());
+        headersAccessor.get().toArray(), isCachingStore);
     wrapped().remove(sessionKey);
   }
 
   @Override
   public void put(Windowed<Bytes> sessionKey, byte[] aggregate) {
     byte[] valueWithTrace = stateStorePropagationHelpers.handleStateStorePutTrace(wrapped().name(),
-        aggregate, headersAccessor.get().toArray());
+        aggregate, headersAccessor.get().toArray(), isCachingStore);
     wrapped().put(sessionKey, valueWithTrace);
   }
 

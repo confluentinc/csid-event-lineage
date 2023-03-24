@@ -1,5 +1,9 @@
+/*
+ * Copyright 2022 Confluent Inc.
+ */
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkastreams.helpers;
 
+import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.StateStoreCachingFeature;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkacommon.HeadersHolder;
 import java.util.function.Supplier;
 import org.apache.kafka.common.header.Headers;
@@ -21,7 +25,16 @@ public class BaseTracingStore<T extends StateStore> extends
    */
   protected Supplier<Headers> headersAccessor = HeadersHolder::get;
 
-  public BaseTracingStore(T wrapped) {
+  /**
+   * State store can be wrapped at 2 levels - Caching layer and underlying state store layer (i.e.
+   * RocksDB store)
+   * <p>
+   * This flag indicates whether this wrapping store is attached to Cache layer or not
+   */
+  protected StateStoreCachingFeature isCachingStore;
+
+  public BaseTracingStore(T wrapped, StateStoreCachingFeature isCachingStore) {
     super(wrapped);
+    this.isCachingStore = isCachingStore;
   }
 }
