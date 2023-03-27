@@ -1,0 +1,17 @@
+name: csid-event-lineage
+lang: java
+lang_version: unknown
+git:
+  enable: true
+github:
+  enable: true
+  repo_name: confluentinc/csid-event-lineage
+semaphore:
+  enable: true
+  pipeline_enable: false
+  triggers:
+  - branches
+  - pull_requests
+  branches:
+  - master
+  - /^v\d+\.\d+\.x$/
