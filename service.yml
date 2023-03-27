@@ -1,0 +1,9 @@
+name: csid-event-lineage
+lang: java
+lang_version: unknown
+git:
+  enable: true
+github:
+  enable: true
+semaphore:
+  enable: true
