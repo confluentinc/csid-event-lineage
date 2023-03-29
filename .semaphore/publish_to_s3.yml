@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2021-2022 Confluent, Inc.
+# Copyright (C) 2022-2023 Confluent, Inc.
 #
 
 version: v1.0
@@ -42,7 +42,7 @@ blocks:
             - name: Publish Artifacts
               commands:i
                 - cache restore
-                - cache restore csid-csm-ssh-keys
+                - cache restore csid-event-lineage-ssh-keys
                 # export aws credentials for aws maven plugin
                 - export AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
                 - export AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)

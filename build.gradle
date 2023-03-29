@@ -117,15 +117,25 @@ subprojects {
     }
 
     if (project.hasProperty('publish-to-s3')) {
-//        // Used for production environment
-//        propertyDrivenProfiles = publishToS3Profile
-//        apply from: rootProject.file('.semaphore/publish-to-s3.yml');
         publishing {
             repositories {
                 maven {
                     name = "confluent-csid-repo"
                     def releasesRepoUrl = "s3://confluent-csid-maven/releases/"
                     def snapshotsRepoUrl = "s3://confluent-csid-maven/snapshots/"
+                    url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                }
+            }
+        }
+    }
+
+    if (project.hasProperty('publish-to-codeartifact')) {
+        publishing {
+            repositories {
+                maven {
+                    name = version.endsWith('SNAPSHOT') ? "confluent-codeartifact-internal" : "confluent-releases"
+                    def releasesRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases"
+                    def snapshotsRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases"
                     url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
                 }
             }
