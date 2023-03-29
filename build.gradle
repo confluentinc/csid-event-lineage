@@ -115,12 +115,11 @@ subprojects {
         implementation platform('com.amazonaws:aws-java-sdk-bom:1.11.1000')
         implementation 'com.amazonaws:aws-java-sdk-s3'
     }
-    def publishToS3Profile='publish-to-s3'
 
     if (project.hasProperty('publish-to-s3')) {
-        // Used for production environment
-        propertyDrivenProfiles = publishToS3Profile
-        apply from: rootProject.file('.semaphore/publish-to-s3.yml');
+//        // Used for production environment
+//        propertyDrivenProfiles = publishToS3Profile
+//        apply from: rootProject.file('.semaphore/publish-to-s3.yml');
         publishing {
             repositories {
                 maven {
