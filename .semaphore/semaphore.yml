@@ -69,3 +69,14 @@ blocks:
           commands:
             - make epilogue-ci
             - make testbreak-after
+promotions: 
+  - name: Publish to CodeArtifact
+    pipeline_file: publish_to_codeartifact.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ '.*'"
+  - name: Publish to S3
+    pipeline_file: publish_to_s3.yml
+    trigger: manual
+    when:
+      - "result = 'passed' and tag =~ '.*'"
+      -  manual
