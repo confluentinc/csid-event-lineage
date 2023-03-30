@@ -44,6 +44,8 @@ global_job_config:
     always:
       commands:
         - make epilogue-ci
+        -
+additionalProperties: true
 
 blocks:
   - name: "Build, Test, Release"
