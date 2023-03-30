@@ -76,6 +76,5 @@ promotions:
   - name: Publish to S3
     pipeline_file: publish_to_s3.yml
     trigger: manual
-      when:
-        - "result = 'passed' and tag =~ '.*'"
-        - "manual"
+    auto_promote:
+      when: "result == 'passed' and tag =~ '.*', manual: true"
