@@ -30,20 +30,20 @@ global_job_config:
       - chmod 700 ~/.m2/settings.xml
       - chmod 700 ~/.netrc
       - make docker-login-ci
-      - sem-version java 17
+      - sem-version java 11
 blocks:
-  - name: Tests
-    execution_time_limit:
-      minutes: 40
+  - name: Build and test
     task:
       jobs:
-        - name: Unit Tests
+        - name: Build and test
           commands:
-            - ./gradlew test
-      epilogue:
-        always:
+            - ./gradlew clean build test --debug
+  - name: Parse JUnit XML reports
+    task:
+      jobs:
+        - name: Parse reports
           commands:
-            - test-results publish **/target/surefire-reports/*.xml
+            - semaphorectl report parse "build/test-results/test/*.xml" --format junit
 promotions:
   - name: Publish to CodeArtifact
     pipeline_file: publish_to_codeartifact.yml
