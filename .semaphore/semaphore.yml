@@ -38,7 +38,7 @@ global_job_config:
       - chmod 700 ~/.m2/settings.xml
       - chmod 700 ~/.netrc
       - make docker-login-ci
-      - sem-version java 17
+      - sem-version java 11
 
 blocks:
     - name: Tests
