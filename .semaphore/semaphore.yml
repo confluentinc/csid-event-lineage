@@ -50,7 +50,7 @@ blocks:
                 commands:
                   # Again, -q to reduce output spam. Replace with command
                   # that executes tests
-                  - ./gradlew -q --batch-mode test
+                  - ./gradlew test
           epilogue:
               always:
                   commands:
@@ -65,3 +65,10 @@ promotions:
     pipeline_file: publish_to_s3.yml
     auto_promote:
       when: "result = 'passed' and tag =~ '.*'"
+
+after_pipeline:
+  task:
+    jobs:
+      - name: Publish Results
+        commands:
+          - test-results gen-pipeline-report
