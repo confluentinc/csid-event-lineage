@@ -91,6 +91,9 @@ public class SinkTaskTracingTest {
 
     connectStandalone.stop();
 
+    commonTestUtils.waitUntil("Wait for traces",
+        () -> instrumentation.waitForTraces(1).get(0).size() == 3);
+
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
     assertTracesCaptured(traces,
