@@ -39,10 +39,6 @@ global_job_config:
       - chmod 700 ~/.netrc
       - make docker-login-ci
       - sem-version java 17
-  epilogue:
-    always:
-      commands:
-        - make epilogue-ci
 
 blocks:
   - name: "Build, Test, Release"
