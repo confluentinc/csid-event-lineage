@@ -31,19 +31,23 @@ global_job_config:
       - chmod 700 ~/.netrc
       - make docker-login-ci
       - sem-version java 11
+  epilogue:
+    always:
+      commands:
+        - '[[ -f report.xml ]] && test-results publish report.xml'
 blocks:
   - name: Build and test
     task:
       jobs:
         - name: Build and test
           commands:
-            - ./gradlew clean build test --debug
-  - name: Parse JUnit XML reports
-    task:
-      jobs:
-        - name: Parse reports
-          commands:
-            - semaphorectl report parse "build/test-results/test/*.xml" --format junit
+            - ./gradlew clean build test
+after_pipeline:
+  task:
+    jobs:
+      - name: Publish Results
+        commands:
+          - test-results gen-pipeline-report
 promotions:
   - name: Publish to CodeArtifact
     pipeline_file: publish_to_codeartifact.yml
