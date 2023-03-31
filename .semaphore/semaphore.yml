@@ -39,7 +39,7 @@ blocks:
       jobs:
         - name: Unit Tests
           commands:
-            - ./gradlew -q test
+            - ./gradlew test
       epilogue:
         always:
           commands:
