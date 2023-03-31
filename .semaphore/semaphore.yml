@@ -39,10 +39,6 @@ global_job_config:
       - chmod 700 ~/.netrc
       - make docker-login-ci
       - sem-version java 11
-  epilogue:
-    always:
-      commands:
-        - '[[ -f report.xml ]] && test-results publish report.xml'
 
 blocks:
   - name: Build and test
@@ -50,7 +46,11 @@ blocks:
       jobs:
         - name: Build and test
           commands:
-            - ./gradlew clean build test --debug
+            - ./gradlew clean build test
+      epilogue:
+        always:
+          commands:
+            - test-results publish **/tests/**/*.html
 
 after_pipeline:
   task:
