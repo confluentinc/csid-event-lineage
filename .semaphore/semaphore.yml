@@ -41,20 +41,19 @@ global_job_config:
       - sem-version java 11
 
 blocks:
-    - name: Tests
-      execution_time_limit:
-          minutes: 40
-      task:
-          jobs:
-              - name: Unit Tests
-                commands:
-                  # Again, -q to reduce output spam. Replace with command
-                  # that executes tests
-                  - ./gradlew test
-          epilogue:
-              always:
-                  commands:
-                    - test-results publish **/target/surefire-reports/*.xml
+  - name: Build and test
+    task:
+      jobs:
+        - name: Build and test
+          commands:
+            - ./gradlew clean build test
+
+  - name: Parse JUnit XML reports
+    task:
+        jobs:
+            - name: Parse reports
+              commands:
+                - semaphorectl report parse "build/test-results/test/*.xml" --format junit
 
 promotions:
   - name: Publish to CodeArtifact
@@ -65,10 +64,3 @@ promotions:
     pipeline_file: publish_to_s3.yml
     auto_promote:
       when: "result = 'passed' and tag =~ '.*'"
-
-after_pipeline:
-  task:
-    jobs:
-      - name: Publish Results
-        commands:
-          - test-results gen-pipeline-report
