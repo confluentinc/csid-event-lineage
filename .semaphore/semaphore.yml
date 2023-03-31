@@ -1,22 +1,14 @@
-# This file is managed by ServiceBot plugin - Semaphore. The content in this file is created using a common
-# template and configurations in service.yml.
-# Any modifications made to version, name, agent, and global_job_config will be overwritten by the generated
-# content in nightly runs. Code changes made to the remaining sections will not be affected.
-# For more information, please refer to the page:
-# https://confluentinc.atlassian.net/wiki/spaces/Foundations/pages/2871296194/Add+SemaphoreCI
 version: v1.0
 name: build-test-release
 agent:
   machine:
     type: s1-prod-ubuntu20-04-amd64-1
-
+    os_image: ''
 auto_cancel:
   running:
-    when: "branch != 'master'"
-
+    when: branch != 'master'
 execution_time_limit:
   hours: 1
-
 global_job_config:
   secrets:
     - name: vault_sem2_approle
@@ -39,29 +31,25 @@ global_job_config:
       - chmod 700 ~/.netrc
       - make docker-login-ci
       - sem-version java 17
-
 blocks:
-    - name: Tests
-      execution_time_limit:
-          minutes: 40
-      task:
-          jobs:
-              - name: Unit Tests
-                commands:
-                  # Again, -q to reduce output spam. Replace with command
-                  # that executes tests
-                  - ./gradlew -q --batch-mode test
-          epilogue:
-              always:
-                  commands:
-                    - test-results publish **/target/surefire-reports/*.xml
-
+  - name: Tests
+    execution_time_limit:
+      minutes: 40
+    task:
+      jobs:
+        - name: Unit Tests
+          commands:
+            - ./gradlew -q test
+      epilogue:
+        always:
+          commands:
+            - test-results publish **/target/surefire-reports/*.xml
 promotions:
   - name: Publish to CodeArtifact
     pipeline_file: publish_to_codeartifact.yml
     auto_promote:
-      when: "result = 'passed' and tag =~ '.*'"
+      when: result = 'passed' and tag =~ '.*'
   - name: Publish to S3
     pipeline_file: publish_to_s3.yml
     auto_promote:
-      when: "result = 'passed' and tag =~ '.*'"
+      when: result = 'passed' and tag =~ '.*'
