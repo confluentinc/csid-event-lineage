@@ -31,26 +31,19 @@ global_job_config:
       - chmod 700 ~/.netrc
       - make docker-login-ci
       - sem-version java 17
-  epilogue:
-    always:
-      commands:
-        - make epilogue-ci
 blocks:
-  - name: 'Build, Test, Release'
-    run:
-      when: 'change_in(''/'', {exclude: [''/.deployed-versions/'', ''.github/'']})'
+  - name: Tests
+    execution_time_limit:
+      minutes: 40
     task:
       jobs:
-        - name: 'Build, Test, Release'
+        - name: Unit Tests
           commands:
-            - make build
-            - make test
-            - make release-ci
+            - ./gradlew -q test
       epilogue:
         always:
           commands:
-            - make epilogue-ci
-            - make testbreak-after
+            - test-results publish **/target/surefire-reports/*.xml
 promotions:
   - name: Publish to CodeArtifact
     pipeline_file: publish_to_codeartifact.yml
@@ -58,3 +51,5 @@ promotions:
       when: result = 'passed' and tag =~ '.*'
   - name: Publish to S3
     pipeline_file: publish_to_s3.yml
+    auto_promote:
+      when: result = 'passed' and tag =~ '.*'
