@@ -1,15 +1,13 @@
 version: v1.0
-name: build-test-release
+name: Publish to CodeArtifact
 agent:
   machine:
     type: s1-prod-ubuntu20-04-amd64-1
     os_image: ''
-auto_cancel:
-  running:
-    when: branch != 'master'
-execution_time_limit:
-  hours: 1
 global_job_config:
+  env_vars:
+    - name: GRADLE_USER_HOME
+      value: ~/.gradle
   secrets:
     - name: vault_sem2_approle
   prologue:
@@ -20,40 +18,26 @@ global_job_config:
       - . mk-include/bin/vault-setup
       - . vault-sem-get-secret semaphore-secrets-global
       - . vault-sem-get-secret aws_credentials
-      - . vault-sem-get-secret dockerhub-semaphore-cred-ro
       - . vault-sem-get-secret ssh_id_rsa
       - . vault-sem-get-secret netrc
       - . vault-sem-get-secret ssh_config
       - . vault-sem-get-secret gitconfig
       - . vault-sem-get-secret maven-settings
-      - . vault-sem-get-secret csid-bundles
       - chmod 700 ~/.m2/settings.xml
       - chmod 700 ~/.netrc
-      - make docker-login-ci
       - sem-version java 11
-  epilogue:
-    always:
-      commands:
-        - '[[ -f report.xml ]] && test-results publish report.xml'
 blocks:
-  - name: Build and test
+  - name: Deploy to CodeArtifact
     task:
       jobs:
-        - name: Build and test
+        - name: Publish Artifacts
           commands:
-            - ./gradlew clean build test
+            - checkout
+            - cache restore
+            - ./gradlew -DskipTests -Ppublish-to-codeartifact
 after_pipeline:
   task:
     jobs:
       - name: Publish Results
         commands:
           - test-results gen-pipeline-report
-promotions:
-  - name: Publish to CodeArtifact
-    pipeline_file: publish_to_codeartifact.yml
-    auto_promote:
-      when: result = 'passed' and tag =~ '.*'
-  - name: Publish to S3
-    pipeline_file: publish_to_s3.yml
-    auto_promote:
-      when: result = 'passed' and tag =~ '.*'
