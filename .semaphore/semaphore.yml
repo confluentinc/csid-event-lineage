@@ -41,20 +41,20 @@ global_job_config:
       - sem-version java 17
 
 blocks:
-  - name: Tests
+    - name: Tests
       execution_time_limit:
-        minutes: 40
+          minutes: 40
       task:
-        jobs:
-          - name: Unit Tests
-            commands:
-              # Again, -q to reduce output spam. Replace with command
-              # that executes tests
-              - ./gradlew -q --batch-mode test
-        epilogue:
-          always:
-            commands:
-              - test-results publish **/target/surefire-reports/*.xml
+          jobs:
+              - name: Unit Tests
+                commands:
+                  # Again, -q to reduce output spam. Replace with command
+                  # that executes tests
+                  - ./gradlew -q --batch-mode test
+          epilogue:
+              always:
+                  commands:
+                    - test-results publish **/target/surefire-reports/*.xml
 
 promotions:
   - name: Publish to CodeArtifact
