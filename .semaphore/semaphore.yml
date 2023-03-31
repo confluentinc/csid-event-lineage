@@ -41,29 +41,21 @@ global_job_config:
       - sem-version java 17
 
 blocks:
-  - name: "Build, Test, Release"
-    run:
-      # don't run the build or unit tests on non-functional changes...
-      when: "change_in('/', {exclude: ['/.deployed-versions/', '.github/']})"
-    task:
-       # You can customize your CI job here
-#      env_vars:
-#        # custom env_vars
-#      prologue:
-#        commands:
-#          # custom vault secrets
-#          # custom prologue commands
-      jobs:
-        - name: "Build, Test, Release"
-          commands:
-            - make build
-            - make test
-            - make release-ci
-      epilogue:
-        always:
-          commands:
-            - make epilogue-ci
-            - make testbreak-after
+  - name: Tests
+      execution_time_limit:
+        minutes: 40
+      task:
+        jobs:
+          - name: Unit Tests
+            commands:
+              # Again, -q to reduce output spam. Replace with command
+              # that executes tests
+              - ./gradlew -q --batch-mode test
+        epilogue:
+          always:
+            commands:
+              - test-results publish **/target/surefire-reports/*.xml
+
 promotions:
   - name: Publish to CodeArtifact
     pipeline_file: publish_to_codeartifact.yml
