@@ -51,7 +51,8 @@ blocks:
         always:
           commands:
             - pwd
-            - test-results publish **/build/test-results/**/*.xml
+            - ls instrumentation/**/build/test-results/**/*.xml
+            - test-results publish instrumentation/**/build/test-results/**/*.xml
 
 after_pipeline:
   task:
