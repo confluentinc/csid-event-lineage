@@ -50,6 +50,7 @@ blocks:
       epilogue:
         always:
           commands:
+            - pwd
             - test-results publish **/build/test-results/**/*.xml
 
 after_pipeline:
