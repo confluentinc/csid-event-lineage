@@ -50,7 +50,7 @@ blocks:
       epilogue:
         always:
           commands:
-            - test-results publish build/test-results/**/*.xml
+            - test-results publish **/build/test-results/**/*.xml
 
 after_pipeline:
   task:
