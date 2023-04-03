@@ -12,6 +12,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.sinkTask;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TestConstants.DISABLE_PROPAGATION_UT_TAG;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TraceAssertData.trace;
+import static io.opentelemetry.instrumentation.test.utils.LoggerUtils.setLevel;
 import static org.awaitility.Awaitility.await;
 
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,7 +35,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ch.qos.logback.classic.Level;
 
+@Slf4j
 public class SinkTaskTracingTest {
 
   @RegisterExtension
@@ -49,6 +55,7 @@ public class SinkTaskTracingTest {
 
   @BeforeAll
   public static void setupAll() {
+    setLevel(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME), Level.INFO);
     setupHeaderConfiguration();
   }
 
@@ -90,6 +97,11 @@ public class SinkTaskTracingTest {
     commonTestUtils.waitUntil("Wait for traces", () -> instrumentation.waitForTraces(1).get(0).size() == 3);
 
     connectStandalone.stop();
+
+    commonTestUtils.waitUntil("Wait for traces",
+        () -> instrumentation.waitForTraces(1).get(0).size() == 3);
+    log.info("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
