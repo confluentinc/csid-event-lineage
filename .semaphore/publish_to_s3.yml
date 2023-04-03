@@ -46,7 +46,7 @@ blocks:
                 # export aws credentials for aws maven plugin
                 - export AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
                 - export AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
-                - ./gradlew -DskipTests -Ppublish-to-s3
+                - ./gradlew -x test -Ppublish-to-s3 publish
 
 after_pipeline:
     task:

@@ -32,15 +32,6 @@ shadowJar {
 }
 
 publishing {
-    repositories {
-        maven {
-            url = mavenUrl
-            credentials {
-                username = mavenUsername
-                password = mavenPassword
-            }
-        }
-    }
     publications {
         maven(MavenPublication) {
             from components.java

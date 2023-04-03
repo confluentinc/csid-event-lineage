@@ -22,8 +22,8 @@ global_job_config:
       - . vault-sem-get-secret netrc
       - . vault-sem-get-secret ssh_config
       - . vault-sem-get-secret gitconfig
-      - . vault-sem-get-secret maven-settings
-      - chmod 700 ~/.m2/settings.xml
+      - . vault-sem-get-secret gradle_properties
+      - chmod 700 ~/.gradle/gradle.properties
       - chmod 700 ~/.netrc
       - sem-version java 11
 blocks:
@@ -34,9 +34,3 @@ blocks:
           commands:
             - checkout
             - ./gradlew -x test -Ppublish-to-codeartifact publish
-after_pipeline:
-  task:
-    jobs:
-      - name: Publish Results
-        commands:
-          - test-results gen-pipeline-report
