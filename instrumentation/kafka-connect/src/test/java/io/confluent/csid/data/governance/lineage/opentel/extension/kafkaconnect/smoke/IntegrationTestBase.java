@@ -115,7 +115,7 @@ abstract class IntegrationTestBase {
         .withExposedPorts(28382)
         .withLogConsumer(new Slf4jLogConsumer(log))
         .withCopyFileToContainer(
-            MountableFile.forClasspathResource("opentelemetry-javaagent.jarfile_bak"),
+            MountableFile.forClasspathResource("opentelemetry-javaagent.jarfile"),
             "/opt/opentelemetry-javaagent.jar")
         .withCopyFileToContainer(
             MountableFile.forHostPath(extensionPath),
