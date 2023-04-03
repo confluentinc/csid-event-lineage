@@ -25,7 +25,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +35,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Slf4j
 public class SinkTaskTracingTest {
 
   @RegisterExtension
@@ -91,8 +89,6 @@ public class SinkTaskTracingTest {
 
     commonTestUtils.waitUntil("Wait for traces",
         () -> instrumentation.waitForTraces(1).get(0).size() == 3);
-    log.info("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
-    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
