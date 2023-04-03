@@ -101,8 +101,8 @@ public class SinkTaskTracingTest {
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
     assertTracesCaptured(traces,
-            trace().withSpans(consume(), sinkTask().withNameContaining(testTopic)
-                    .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
+        trace().withSpans(produce(), consume(), sinkTask().withNameContaining(testTopic)
+            .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
   }
 
   /**

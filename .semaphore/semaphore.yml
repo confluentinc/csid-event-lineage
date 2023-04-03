@@ -38,6 +38,7 @@ blocks:
         - name: Build and test
           commands:
             - ./gradlew clean build test
+          parallelism: 1
       epilogue:
         always:
           commands:
