@@ -80,6 +80,8 @@ task testsWithNoPropagation(type: Test) {
         includeTags "DISABLE_PROPAGATION"
     }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=false")
+    jvmArgs("-Devent.lineage.header-capture-whitelist=captured_header1,captured_header2,captured_propagated_header,captured_propagated_header2")
+    jvmArgs("-Devent.lineage.header-propagation-whitelist=captured_propagated_header,captured_propagated_header2,non_captured_propagated_header")
 }
 
 task unitTests(type: Test) {
@@ -94,6 +96,8 @@ task unitTests(type: Test) {
         setFailOnNoMatchingTests(false)
     }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=true")
+    jvmArgs("-Devent.lineage.header-capture-whitelist=captured_header1,captured_header2,captured_propagated_header,captured_propagated_header2")
+    jvmArgs("-Devent.lineage.header-propagation-whitelist=captured_propagated_header,captured_propagated_header2,non_captured_propagated_header")
     mustRunAfter(testsWithNoPropagation)
 }
 

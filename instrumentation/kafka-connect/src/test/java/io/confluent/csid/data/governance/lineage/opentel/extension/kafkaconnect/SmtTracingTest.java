@@ -4,8 +4,6 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.cleanupHeaderConfiguration;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.setupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.smt;
 import static io.opentelemetry.instrumentation.test.utils.LoggerUtils.setLevel;
 import static org.awaitility.Awaitility.await;
@@ -27,7 +25,6 @@ import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +51,6 @@ public class SmtTracingTest {
   @BeforeAll
   public static void setupAll() {
     setLevel(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME), Level.INFO);
-    setupHeaderConfiguration();
   }
 
   @BeforeEach
@@ -68,11 +64,6 @@ public class SmtTracingTest {
   void cleanup() {
     instrumentation.clearData();
     commonTestUtils.stopKafkaContainer();
-  }
-
-  @AfterAll
-  public static void cleanupAll() {
-    cleanupHeaderConfiguration();
   }
 
   @SneakyThrows

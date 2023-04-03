@@ -5,8 +5,6 @@ package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.assertTracesCaptured;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.cleanupHeaderConfiguration;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.setupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.consume;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.produce;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.sinkTask;
@@ -15,6 +13,7 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.opentelemetry.instrumentation.test.utils.LoggerUtils.setLevel;
 import static org.awaitility.Awaitility.await;
 
+import ch.qos.logback.classic.Level;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
@@ -27,7 +26,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +35,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ch.qos.logback.classic.Level;
 
 @Slf4j
 public class SinkTaskTracingTest {
@@ -56,7 +53,6 @@ public class SinkTaskTracingTest {
   @BeforeAll
   public static void setupAll() {
     setLevel(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME), Level.INFO);
-    setupHeaderConfiguration();
   }
 
   @BeforeEach
@@ -70,11 +66,6 @@ public class SinkTaskTracingTest {
   void cleanup() {
     instrumentation.clearData();
     commonTestUtils.stopKafkaContainer();
-  }
-
-  @AfterAll
-  public static void cleanupAll() {
-    cleanupHeaderConfiguration();
   }
 
   @SneakyThrows
