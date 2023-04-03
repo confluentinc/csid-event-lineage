@@ -33,8 +33,7 @@ blocks:
         - name: Publish Artifacts
           commands:
             - checkout
-            - cache restore
-            - ./gradlew -DskipTests -Ppublish-to-codeartifact
+            - ./gradlew -x test -Ppublish-to-codeartifact publish
 after_pipeline:
   task:
     jobs:
