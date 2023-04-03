@@ -4,11 +4,11 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.cleanupHeaderConfiguration;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.setupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.smt;
+import static io.opentelemetry.instrumentation.test.utils.LoggerUtils.setLevel;
 import static org.awaitility.Awaitility.await;
 
+import ch.qos.logback.classic.Level;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData;
@@ -23,15 +23,18 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class SmtTracingTest {
 
   @RegisterExtension
@@ -47,7 +50,7 @@ public class SmtTracingTest {
 
   @BeforeAll
   public static void setupAll() {
-    setupHeaderConfiguration();
+    setLevel(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME), Level.INFO);
   }
 
   @BeforeEach
@@ -61,11 +64,6 @@ public class SmtTracingTest {
   void cleanup() {
     instrumentation.clearData();
     commonTestUtils.stopKafkaContainer();
-  }
-
-  @AfterAll
-  public static void cleanupAll() {
-    cleanupHeaderConfiguration();
   }
 
   @SneakyThrows
@@ -85,6 +83,9 @@ public class SmtTracingTest {
     connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
+    log.info("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
+
     // Only checking first trace's second span - should be the SMT span.
     // Now that SourceTask is wired - first is Source Task span, followed by SMT and Producer Send.
     assertSpan(traces.get(0).get(1), smt().withNameContaining(transformClassName)
@@ -101,6 +102,8 @@ public class SmtTracingTest {
             commonTestUtils.getHeaderInjectTrasnformProperties(), testTopic));
     connectStandalone.start();
 
+    log.info("Header literal pt1 " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+
     await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(100)).until(
         connectStandalone::isRunning);
 
@@ -111,8 +114,13 @@ public class SmtTracingTest {
     commonTestUtils.waitUntil("Wait for traces", () -> instrumentation.waitForTraces(1).get(0).size() == 4);
 
     connectStandalone.stop();
+    commonTestUtils.waitUntil("Wait for traces", () -> instrumentation.waitForTraces(1).get(0).get(2).getAttributes().size() == 4);
+
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
+    log.info("Header literal pt2" + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
+
     // Only checking first trace's third span - should be the SMT span.
     // Now that SinkTask is wired - first is producer send span, followed by consumer process, SMT and Sink task.
     assertSpan(traces.get(0).get(2), smt().withNameContaining(transformClassName)
