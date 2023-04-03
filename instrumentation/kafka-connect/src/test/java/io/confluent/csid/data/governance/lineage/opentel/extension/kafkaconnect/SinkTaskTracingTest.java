@@ -101,8 +101,9 @@ public class SinkTaskTracingTest {
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
     assertTracesCaptured(traces,
-        trace().withSpans(produce(), consume(), sinkTask().withNameContaining(testTopic)
-            .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
+            trace().withSpans(produce()),
+            trace().withSpans(consume(), sinkTask().withNameContaining(testTopic)
+                    .withHeaders(charset, CAPTURED_PROPAGATED_HEADER)));
   }
 
   /**
@@ -113,6 +114,7 @@ public class SinkTaskTracingTest {
   @SneakyThrows
   @Test
   @Tag(DISABLE_PROPAGATION_UT_TAG)
+  //this test passes
   void testSinkTaskCaptureWithHeaderPropagationAndCaptureWhenInboundMessageHasNoTrace() {
     ConnectStandalone connectStandalone = new ConnectStandalone(
         commonTestUtils.getConnectWorkerProperties(),
@@ -130,8 +132,6 @@ public class SinkTaskTracingTest {
     commonTestUtils.waitUntil("Wait for traces", () -> instrumentation.waitForTraces(2).get(1).size() == 2);
 
     connectStandalone.stop();
-    log.info("  " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
-    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(2);
     //Expected trace - producer send, consumer process, sink-task
