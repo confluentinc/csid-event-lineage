@@ -11,7 +11,10 @@ dependencies {
     implementation(project(":instrumentation:kafka-common"))
     compileOnly("org.apache.kafka:connect-api:${versions.kafka}")
     compileOnly("org.slf4j:slf4j-api:${versions.slf4j}")
-    compileOnly("org.apache.kafka:connect-runtime:${versions.kafka}")
+    compileOnly("org.apache.kafka:connect-runtime:${versions.kafka}") {
+                exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    }
+    implementation("org.slf4j:log4j-over-slf4j:2.0.5")
 
     compileOnly("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi:${versions.opentelemetry}")
 
@@ -25,7 +28,6 @@ dependencies {
     add("muzzleBootstrap", "io.opentelemetry.javaagent:opentelemetry-javaagent-instrumentation-api:${versions.opentelemetryJavaagentAlpha}")
     add("muzzleTooling", "io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${versions.opentelemetryJavaagentAlpha}")
     add("muzzleTooling", "io.opentelemetry.javaagent:opentelemetry-javaagent-tooling:${versions.opentelemetryJavaagentAlpha}")
-    add("muzzleTooling", "org.slf4j:slf4j-simple:${versions.slf4j}")
 
     //test dependencies
     testInstrumentation "io.opentelemetry.javaagent.instrumentation:opentelemetry-javaagent-kafka-clients-0.11:${versions.opentelemetryJavaagentAlpha}"
@@ -34,10 +36,14 @@ dependencies {
 
     testImplementation("org.testcontainers:kafka:${versions.testContainersKafka}")
     testImplementation("org.apache.kafka:kafka-clients:${versions.kafka}")
+
     testImplementation("org.awaitility:awaitility:${versions.awaitility}")
-    testImplementation("org.slf4j:slf4j-simple:${versions.slf4j}")
-    testImplementation("org.apache.kafka:connect-runtime:${versions.kafka}")
-    testImplementation("org.apache.kafka:kafka-tools:${versions.kafka}")
+    testImplementation("org.apache.kafka:connect-runtime:${versions.kafka}") {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    }
+    testImplementation("org.apache.kafka:kafka-tools:${versions.kafka}"){
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    }
     testImplementation("org.apache.commons:commons-lang3:${versions.apacheCommons3}")
 
     testImplementation("com.squareup.okhttp3:okhttp:3.12.12")
@@ -45,7 +51,6 @@ dependencies {
     testImplementation("com.google.protobuf:protobuf-java-util:3.12.4")
     testImplementation("io.opentelemetry:opentelemetry-api:${versions.opentelemetry}")
     testImplementation("io.opentelemetry.proto:opentelemetry-proto:${versions.opentelemetryProto}")
-
 }
 /**
  * Downloads open telemetry agent using the version specified in the project's gradle.properties file.
@@ -75,6 +80,8 @@ task testsWithNoPropagation(type: Test) {
         includeTags "DISABLE_PROPAGATION"
     }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=false")
+    jvmArgs("-Devent.lineage.header-capture-whitelist=captured_header1,captured_header2,captured_propagated_header,captured_propagated_header2")
+    jvmArgs("-Devent.lineage.header-propagation-whitelist=captured_propagated_header,captured_propagated_header2,non_captured_propagated_header")
 }
 
 task unitTests(type: Test) {
@@ -89,6 +96,8 @@ task unitTests(type: Test) {
         setFailOnNoMatchingTests(false)
     }
     jvmArgs("-Dotel.instrumentation.kafka.client-propagation.enabled=true")
+    jvmArgs("-Devent.lineage.header-capture-whitelist=captured_header1,captured_header2,captured_propagated_header,captured_propagated_header2")
+    jvmArgs("-Devent.lineage.header-propagation-whitelist=captured_propagated_header,captured_propagated_header2,non_captured_propagated_header")
     mustRunAfter(testsWithNoPropagation)
 }
 
