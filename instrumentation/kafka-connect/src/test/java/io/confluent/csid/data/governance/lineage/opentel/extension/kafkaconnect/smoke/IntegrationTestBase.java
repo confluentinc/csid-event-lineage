@@ -4,12 +4,17 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.smoke;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils.DOCKER_NETWORK;
+import static io.opentelemetry.instrumentation.test.utils.LoggerUtils.setLevel;
 
+import ch.qos.logback.classic.Level;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeAll;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -47,6 +52,11 @@ abstract class IntegrationTestBase {
   protected CommonTestUtils commonTestUtils;
 
   protected TraceAssertUtils traceAssertUtils;
+
+  @BeforeAll
+  public static void setupAll() {
+    setLevel(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME), Level.INFO);
+  }
 
   void setup() {
     startCollector();
@@ -105,7 +115,7 @@ abstract class IntegrationTestBase {
         .withExposedPorts(28382)
         .withLogConsumer(new Slf4jLogConsumer(log))
         .withCopyFileToContainer(
-            MountableFile.forClasspathResource("opentelemetry-javaagent.jarfile"),
+            MountableFile.forClasspathResource("opentelemetry-javaagent.jarfile_bak"),
             "/opt/opentelemetry-javaagent.jar")
         .withCopyFileToContainer(
             MountableFile.forHostPath(extensionPath),
