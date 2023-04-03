@@ -95,8 +95,8 @@ public class SinkTaskTracingTest {
 
     commonTestUtils.waitUntil("Wait for traces",
         () -> instrumentation.waitForTraces(1).get(0).size() == 3);
-    log.debug("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
-    log.debug("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
+    log.info("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
@@ -130,8 +130,8 @@ public class SinkTaskTracingTest {
     commonTestUtils.waitUntil("Wait for traces", () -> instrumentation.waitForTraces(2).get(1).size() == 2);
 
     connectStandalone.stop();
-    log.debug("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
-    log.debug("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
+    log.info("  " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(2);
     //Expected trace - producer send, consumer process, sink-task

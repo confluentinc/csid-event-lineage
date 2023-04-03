@@ -87,8 +87,8 @@ public class SmtTracingTest {
     connectStandalone.stop();
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
-    log.debug("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
-    log.debug("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
+    log.info("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
 
     // Only checking first trace's second span - should be the SMT span.
     // Now that SourceTask is wired - first is Source Task span, followed by SMT and Producer Send.
@@ -106,7 +106,7 @@ public class SmtTracingTest {
             commonTestUtils.getHeaderInjectTrasnformProperties(), testTopic));
     connectStandalone.start();
 
-    log.debug("Header literal pt1 " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header literal pt1 " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
 
     await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(100)).until(
         connectStandalone::isRunning);
@@ -122,8 +122,8 @@ public class SmtTracingTest {
 
 
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
-    log.debug("Header literal pt2" + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
-    log.debug("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
+    log.info("Header literal pt2" + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
 
     // Only checking first trace's third span - should be the SMT span.
     // Now that SinkTask is wired - first is producer send span, followed by consumer process, SMT and Sink task.
