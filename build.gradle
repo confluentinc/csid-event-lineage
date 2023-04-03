@@ -1,5 +1,6 @@
 plugins {
     id "java"
+    id "maven-publish"
     /*
     Instrumentation agent extension mechanism expects a single jar containing everything required
     for your extension. This also includes any external libraries that your extension uses and
@@ -13,42 +14,6 @@ plugins {
 
     id "io.opentelemetry.instrumentation.muzzle-generation" version "1.13.0-alpha"
     id "io.opentelemetry.instrumentation.muzzle-check" version "1.13.0-alpha"
-}
-
-ext {
-    /*
-      First preference to project properties - -P command line override, local gradle.properties
-      file, global gradle.properties file.
-      Second preference - system properties 'org.gradle.project.maven...' - as those are set by init
-      script in CI builds.
-      Gradle docs specify that system properties with keys like 'org.gradle.project.foo' should automatically
-      resolve and set corresponding project.foo property - but that doesn't seem to be true / working
-      therefore reading system properties explicitly below.
-    */
-
-    //Maven publish repo URL
-    //check project prop and use if set
-    mavenUrl = project.hasProperty('mavenUrl') ? project.mavenUrl
-            //check system prop and use if set
-            : (System.properties.containsKey('org.gradle.project.mavenUrl') ? System.getProperty("org.gradle.project.mavenUrl")
-            //initialize to empty string if neither of the above properties are populated
-            : '')
-
-    //Maven publish repo Username
-    //check project prop and use if set
-    mavenUsername = project.hasProperty('mavenUsername') ? project.mavenUsername
-            //check system prop and use if set
-            : (System.properties.containsKey('org.gradle.project.mavenUsername') ? System.getProperty('org.gradle.project.mavenUsername')
-            //initialize to empty string if neither of the above properties are populated
-            : '')
-
-    //Maven publish repo Password
-    //check project prop and use if set
-    mavenPassword = project.hasProperty('mavenPassword') ? project.mavenPassword
-            //check system prop and use if set
-            : (System.properties.containsKey('org.gradle.project.mavenPassword') ? System.getProperty('org.gradle.project.mavenPassword')
-            //initialize to empty string if neither of the above properties are populated
-            : '')
 }
 
 subprojects {
@@ -111,6 +76,34 @@ subprojects {
         testImplementation("org.mockito:mockito-core:3.3.3")
         testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
         testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.2")
+        implementation platform('com.amazonaws:aws-java-sdk-bom:1.11.1000')
+        implementation 'com.amazonaws:aws-java-sdk-s3'
+    }
+
+    if (project.hasProperty('publish-to-s3')) {
+        publishing {
+            repositories {
+                maven {
+                    name = "confluent-csid-repo"
+                    def releasesRepoUrl = "s3://confluent-csid-maven/releases/"
+                    def snapshotsRepoUrl = "s3://confluent-csid-maven/snapshots/"
+                    url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                }
+            }
+        }
+    }
+
+    if (project.hasProperty('publish-to-codeartifact')) {
+        publishing {
+            repositories {
+                maven {
+                    name = version.endsWith('SNAPSHOT') ? "confluent-codeartifact-internal" : "confluent-releases"
+                    def releasesRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases"
+                    def snapshotsRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases"
+                    url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                }
+            }
+        }
     }
 
     tasks {
@@ -123,6 +116,7 @@ subprojects {
         }
     }
 }
+
 project("instrumentation") {
     archivesBaseName = "lineage-opentel-extensions"
 }
