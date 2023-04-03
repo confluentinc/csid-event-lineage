@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
+@Slf4j
 public class SinkTaskTracingTest {
 
   @RegisterExtension
@@ -91,6 +93,11 @@ public class SinkTaskTracingTest {
 
     connectStandalone.stop();
 
+    commonTestUtils.waitUntil("Wait for traces",
+        () -> instrumentation.waitForTraces(1).get(0).size() == 3);
+    log.info("Header literal " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.value.literal"));
+    log.info("Header " + commonTestUtils.getHeaderInjectTrasnformProperties().getProperty("transforms.insertHeader.header"));
+
     List<List<SpanData>> traces = instrumentation.waitForTraces(1);
     //Expected trace - producer send, consumer process, sink-task
     assertTracesCaptured(traces,
@@ -106,6 +113,7 @@ public class SinkTaskTracingTest {
   @SneakyThrows
   @Test
   @Tag(DISABLE_PROPAGATION_UT_TAG)
+  //this test passes
   void testSinkTaskCaptureWithHeaderPropagationAndCaptureWhenInboundMessageHasNoTrace() {
     ConnectStandalone connectStandalone = new ConnectStandalone(
         commonTestUtils.getConnectWorkerProperties(),
