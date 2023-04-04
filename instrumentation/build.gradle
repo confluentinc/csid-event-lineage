@@ -31,21 +31,60 @@ shadowJar {
     relocatePackages(it)
 }
 
-publishing {
-    repositories {
-        maven {
-            url = mavenUrl
-            credentials {
-                username = mavenUsername
-                password = mavenPassword
+if (project.hasProperty('publish-to-s3')) {
+    publishing {
+        repositories {
+            maven {
+                name = "confluent-csid-repo"
+                def releasesRepoUrl = "s3://confluent-csid-maven/releases/"
+                def snapshotsRepoUrl = "s3://confluent-csid-maven/snapshots/"
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                credentials {
+                    username "$mavenUser"
+                    password "$mavenPassword"
+                }
+            }
+        }
+        publications {
+            maven(MavenPublication) {
+                from components.java
+                afterEvaluate {
+                    artifactId = archivesBaseName
+                }
             }
         }
     }
-    publications {
-        maven(MavenPublication) {
-            from components.java
-            afterEvaluate {
-                artifactId = archivesBaseName
+}
+
+repositories {
+    maven {
+        name 'confluent-codeartifact'
+        // We do not use mavenUrl property here since that is required to be a writeable repo (i.e. maven-releases)
+        // whereas we want to use a virtual repo for fetching dependencies
+        url 'https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven/'
+        credentials {
+            username "$mavenUser"
+            password "$mavenPassword"
+        }
+    }
+}
+
+if (project.hasProperty('publish-to-codeartifact')) {
+    publishing {
+        repositories {
+            maven {
+                name = version.endsWith('SNAPSHOT') ? "confluent-codeartifact-internal" : "confluent-releases"
+                def releasesRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases"
+                def snapshotsRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases"
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            }
+        }
+        publications {
+            maven(MavenPublication) {
+                from components.java
+                afterEvaluate {
+                    artifactId = archivesBaseName
+                }
             }
         }
     }

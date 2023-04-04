@@ -9,7 +9,9 @@ import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkac
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.sourceTask;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.testSourcePollTask;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.TraceAssertData.trace;
+import static io.opentelemetry.instrumentation.test.utils.LoggerUtils.setLevel;
 
+import ch.qos.logback.classic.Level;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.VerifiableSourceBatchTracedConnector;
@@ -23,10 +25,13 @@ import java.util.UUID;
 import lombok.SneakyThrows;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SourceTaskTracingTest {
 
@@ -39,6 +44,11 @@ public class SourceTaskTracingTest {
 
   @TempDir
   File tempDir;
+
+  @BeforeAll
+  public static void setupAll() {
+    setLevel(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME), Level.INFO);
+  }
 
   @BeforeEach
   void setup() {
