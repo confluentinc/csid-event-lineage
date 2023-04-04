@@ -34,6 +34,3 @@ blocks:
           commands:
             - checkout
             - ./gradlew -x test -Ppublish-to-codeartifact publish
-      prologue:
-        commands:
-          - 'cache delete ${cache_key}'
