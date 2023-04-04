@@ -16,25 +16,6 @@ plugins {
     id "io.opentelemetry.instrumentation.muzzle-check" version "1.13.0-alpha"
 }
 
-// this section must be before the allprojects section where the maven credentials are used
-ext {
-    mavenUrl = propertyOrElse(project, 'mavenUrl', '')
-    mavenUsername = propertyOrElse(project, 'mavenUsername', '')
-    mavenPassword = propertyOrElse(project, 'mavenPassword', '')
-}
-
-allprojects {
-    repositories {
-        maven {
-            url 'https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven/'
-            credentials {
-                username "aws"
-                password System.env.CODEARTIFACT_AUTH_TOKEN
-            }
-        }
-    }
-}
-
 subprojects {
     version = rootProject.version
 
@@ -88,6 +69,14 @@ subprojects {
         maven {
             name = "sonatype"
             url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+        }
+        maven {
+            name = "internalMaven"
+            url 'https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven/'
+            credentials {
+                username "aws"
+                password System.env.CODEARTIFACT_AUTH_TOKEN
+            }
         }
     }
 
