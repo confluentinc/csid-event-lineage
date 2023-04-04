@@ -1,4 +1,3 @@
-build.gradle
 plugins {
     id "java"
     id "maven-publish"
