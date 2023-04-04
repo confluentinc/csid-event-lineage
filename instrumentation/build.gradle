@@ -62,7 +62,7 @@ if (project.hasProperty('publish-to-codeartifact')) {
             maven {
                 name = version.endsWith('SNAPSHOT') ? "confluent-codeartifact-internal" : "confluent-releases"
                 def releasesRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases"
-                def snapshotsRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases"
+                def snapshotsRepoUrl = "https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-snapshots"
                 url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
                 credentials {
                     username = "$mavenUsername"

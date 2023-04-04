@@ -16,9 +16,6 @@ plugins {
     id "io.opentelemetry.instrumentation.muzzle-check" version "1.13.0-alpha"
 }
 
-println "mavenUsername $mavenUsername"
-println "mavenUrl $mavenUrl"
-
 allprojects {
     repositories {
         mavenCentral()
