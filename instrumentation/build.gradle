@@ -63,8 +63,8 @@ repositories {
         // whereas we want to use a virtual repo for fetching dependencies
         url 'https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven/'
         credentials {
-            username = "$mavenUser"
-            password = "$mavenPassword"
+            username "$mavenUser"
+            password "$mavenPassword"
         }
     }
 }
