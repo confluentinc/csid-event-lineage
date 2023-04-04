@@ -128,6 +128,11 @@ public class CommonTestUtils {
     props.put("transforms.insertHeader.header", CAPTURED_PROPAGATED_HEADER.key());
     props.put("transforms.insertHeader.value.literal",
         new String(CAPTURED_PROPAGATED_HEADER.value(), CHARSET_UTF_8));
+
+    log.debug("header type " + props.get("transforms.insertHeader.type"));
+    log.debug("literal header value " + props.get("transforms.insertHeader.value.literal"));
+    log.debug("header value " + props.get("transforms.insertHeader.header"));
+
     return props;
   }
 
