@@ -31,6 +31,42 @@ shadowJar {
     relocatePackages(it)
 }
 
+def propertyOrElse(project, propertyName, defaultValue) {
+    if (project.hasProperty(propertyName))
+        project.property(propertyName)
+    // Workaround for KC-1802, system properties set by init scripts are not included
+    // in project properties since Gradle 7.1. This can be removed once we update the
+    // packaging code to set credentials via a gradle.properties file instead.
+    else
+        System.getProperty("org.gradle.project.$propertyName", defaultValue)
+}
+
+
+// this section must be before the allprojects section where the maven credentials are used
+ext {
+    mavenUrl = propertyOrElse(project, 'mavenUrl', '')
+    mavenUsername = propertyOrElse(project, 'mavenUsername', '')
+    mavenPassword = propertyOrElse(project, 'mavenPassword', '')
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        mavenLocal()
+        maven {
+            name 'confluent-codeartifact'
+            // We do not use mavenUrl property here since that is required to be a writeable repo (i.e. maven-releases)
+            // whereas we want to use a virtual repo for fetching dependencies
+            url 'https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven/'
+            credentials {
+                username = mavenUsername
+                password = mavenPassword
+            }
+        }
+    }
+}
+
+
 if (project.hasProperty('publish-to-s3')) {
     publishing {
         repositories {
@@ -40,8 +76,8 @@ if (project.hasProperty('publish-to-s3')) {
                 def snapshotsRepoUrl = "s3://confluent-csid-maven/snapshots/"
                 url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
                 credentials {
-                    username "$mavenUser"
-                    password "$mavenPassword"
+                    username = mavenUsername
+                    password = mavenPassword
                 }
             }
         }
