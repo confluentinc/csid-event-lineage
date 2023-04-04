@@ -13,6 +13,7 @@ global_job_config:
   prologue:
     commands:
       - chmod 400 ~/.ssh/id_rsa
+      - make init-ci
       - checkout
       - make install-vault
       - . mk-include/bin/vault-setup
