@@ -35,7 +35,7 @@ global_job_config:
       - . vault-sem-get-secret artifactory-docker-helm
       - . vault-sem-get-secret maven-settings
       - . vault-sem-get-secret cpd_gcloud
-      - . vault-sem-get-secret testbreak-reporting
+      - . vault-sem-get-secret ci-reporting
       - . vault-sem-get-secret v1/ci/kv/service-foundations/cc-mk-include
       - . vault-sem-get-secret dockerhub-semaphore-cred-ro
       - exec &> >(tee -a build.log)
