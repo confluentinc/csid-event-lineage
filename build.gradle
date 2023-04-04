@@ -1,3 +1,4 @@
+build.gradle
 plugins {
     id "java"
     id "maven-publish"
@@ -26,8 +27,10 @@ allprojects {
             // We do not use mavenUrl property here since that is required to be a writeable repo (i.e. maven-releases)
             // whereas we want to use a virtual repo for fetching dependencies
             url 'https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven/'
-            username "aws"
-            password "$codeartifactToken"
+            credentials {
+                username = "$mavenUsername"
+                password = "$mavenPassword"
+            }
         }
     }
 }
