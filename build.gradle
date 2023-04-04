@@ -26,13 +26,10 @@ ext {
 allprojects {
     repositories {
         maven {
-            name 'confluent-codeartifact'
-            // We do not use mavenUrl property here since that is required to be a writeable repo (i.e. maven-releases)
-            // whereas we want to use a virtual repo for fetching dependencies
             url 'https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven/'
             credentials {
-                username = mavenUsername
-                password = mavenPassword
+                username "aws"
+                password System.env.CODEARTIFACT_AUTH_TOKEN
             }
         }
     }
