@@ -25,6 +25,7 @@ global_job_config:
       - . vault-sem-get-secret gradle_properties
       - chmod 700 ~/.gradle/gradle.properties
       - chmod 700 ~/.netrc
+      - make init-ci
       - sem-version java 11
 blocks:
   - name: Deploy to CodeArtifact
