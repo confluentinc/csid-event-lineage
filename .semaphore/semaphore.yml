@@ -10,9 +10,6 @@ auto_cancel:
 execution_time_limit:
   hours: 1
 global_job_config:
-  env_vars:
-    - name: GRADLE_USER_HOME
-      value: ~/.gradle
   secrets:
     - name: vault_sem2_approle
   prologue:
@@ -32,7 +29,6 @@ global_job_config:
       - . vault-sem-get-secret gradle_properties
       - . vault-sem-get-secret csid-bundles
       - chmod 700 ~/.m2/settings.xml
-      - chmod 700 ~/.gradle/gradle.properties
       - chmod 700 ~/.netrc
       - make init-ci
       - make docker-login-ci
