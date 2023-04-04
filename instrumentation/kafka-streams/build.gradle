@@ -31,9 +31,6 @@ dependencies {
     testInstrumentation(project(":instrumentation:kafka-clients"))
     testInstrumentation(project(":instrumentation:kafka-common"))
 
-    testImplementation("io.opentelemetry.javaagent:opentelemetry-testing-common:${versions.opentelemetryJavaagentAlpha}") {
-        exclude group: 'org.eclipse.jetty', module: 'jetty-server'
-    }
     testImplementation("org.testcontainers:kafka:${versions.testContainersKafka}")
     testImplementation("org.apache.kafka:kafka-streams:${versions.kafka}")
     testImplementation("org.apache.kafka:kafka-clients:${versions.kafka}")
