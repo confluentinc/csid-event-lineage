@@ -15,8 +15,7 @@ plugins {
     id "io.opentelemetry.instrumentation.muzzle-generation" version "1.13.0-alpha"
     id "io.opentelemetry.instrumentation.muzzle-check" version "1.13.0-alpha"
 }
-
-ext {
+repositories {
     maven {
         name 'confluent-codeartifact'
         // We do not use mavenUrl property here since that is required to be a writeable repo (i.e. maven-releases)
