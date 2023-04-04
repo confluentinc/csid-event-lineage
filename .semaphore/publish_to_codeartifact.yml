@@ -7,7 +7,7 @@ agent:
 global_job_config:
   env_vars:
     - name: GRADLE_USER_HOME
-      value: ~/.gradle
+      value: .gradle
   secrets:
     - name: vault_sem2_approle
   prologue:
