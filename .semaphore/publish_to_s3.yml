@@ -27,10 +27,10 @@ global_job_config:
             - . vault-sem-get-secret netrc
             - . vault-sem-get-secret ssh_config
             - . vault-sem-get-secret gitconfig
-            - . vault-sem-get-secret maven-settings
             - . vault-sem-get-secret csid-bundles
             - . vault-sem-get-secret csid_aws_credentials
-            - chmod 700 ~/.m2/settings.xml
+            - . vault-sem-get-secret gradle_properties
+            - chmod 700 ~/.gradle/gradle.properties
             - chmod 700 ~/.netrc
             - make docker-login-ci
             - sem-version java 17
@@ -46,11 +46,4 @@ blocks:
                 # export aws credentials for aws maven plugin
                 - export AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
                 - export AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
-                - ./gradlew -DskipTests -Ppublish-to-s3
-
-after_pipeline:
-    task:
-        jobs:
-            - name: Publish Results
-              commands:
-                  - test-results gen-pipeline-report
+                - ./gradlew -x test -Ppublish-to-s3 publish

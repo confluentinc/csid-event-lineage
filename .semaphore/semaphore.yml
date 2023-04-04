@@ -31,10 +31,6 @@ global_job_config:
       - chmod 700 ~/.netrc
       - make docker-login-ci
       - sem-version java 11
-  epilogue:
-    always:
-      commands:
-        - '[[ -f report.xml ]] && test-results publish report.xml'
 blocks:
   - name: Build and test
     task:
@@ -42,6 +38,16 @@ blocks:
         - name: Build and test
           commands:
             - ./gradlew clean build test
+          parallelism: 1
+      epilogue:
+        always:
+          commands:
+            - pwd
+            - ls instrumentation/**/build/test-results/**/*.xml
+            - test-results publish instrumentation/**/build/test-results/**/*.xml
+      env_vars:
+        - name: SEMAPHORE_LOG_LEVEL
+          value: DEBUG
 after_pipeline:
   task:
     jobs:
