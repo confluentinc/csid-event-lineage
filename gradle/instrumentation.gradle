@@ -37,10 +37,11 @@ dependencies {
     testCompileOnly("org.projectlombok:lombok:${versions.lombok}")
     testAnnotationProcessor("org.projectlombok:lombok:${versions.lombok}")
     testImplementation("io.opentelemetry.javaagent:opentelemetry-testing-common:${versions.opentelemetryJavaagentAlpha}")
+            { exclude group: 'ch.qos.logback' }
     testImplementation("io.opentelemetry:opentelemetry-sdk-testing:${versions.opentelemetry}")
     testImplementation("io.opentelemetry.javaagent:opentelemetry-javaagent-extension-api:${versions.opentelemetryJavaagentAlpha}")
     testImplementation("org.assertj:assertj-core:${versions.assertj}")
-    testImplementation("org.slf4j:slf4j-simple:${versions.slf4j}")
+    testImplementation("ch.qos.logback:logback-classic:${versions.logback}")
 
 }
 
@@ -57,7 +58,6 @@ ext.setupUnitTests = { Test test ->
     configure(test) {
         test.inputs.file(shadowJar.archiveFile)
         test.jvmArgs "-Dotel.javaagent.debug=true"
-        test.jvmArgs("-Dorg.slf4j.simpleLogger.defaultLogLevel=debug")
         test.jvmArgs "-javaagent:${configurations.testAgent.files.first().absolutePath}"
         test.jvmArgs "-Dotel.javaagent.experimental.initializer.jar=${shadowJar.archiveFile.get().asFile.absolutePath}"
         test.jvmArgs "-Dotel.javaagent.testing.additional-library-ignores.enabled=false"

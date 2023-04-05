@@ -4,11 +4,11 @@
 package io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect;
 
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.CAPTURED_PROPAGATED_HEADER;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.cleanupHeaderConfiguration;
-import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.HeaderPropagationTestUtils.setupHeaderConfiguration;
 import static io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData.smt;
+import static io.opentelemetry.instrumentation.test.utils.LoggerUtils.setLevel;
 import static org.awaitility.Awaitility.await;
 
+import ch.qos.logback.classic.Level;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.CommonTestUtils;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.ConnectStandalone;
 import io.confluent.csid.data.governance.lineage.opentel.extension.kafkaconnect.testutils.SpanAssertData;
@@ -24,13 +24,14 @@ import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SmtTracingTest {
 
@@ -47,7 +48,7 @@ public class SmtTracingTest {
 
   @BeforeAll
   public static void setupAll() {
-    setupHeaderConfiguration();
+    setLevel(LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME), Level.INFO);
   }
 
   @BeforeEach
@@ -61,11 +62,6 @@ public class SmtTracingTest {
   void cleanup() {
     instrumentation.clearData();
     commonTestUtils.stopKafkaContainer();
-  }
-
-  @AfterAll
-  public static void cleanupAll() {
-    cleanupHeaderConfiguration();
   }
 
   @SneakyThrows
