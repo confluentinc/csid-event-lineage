@@ -1,14 +1,9 @@
 version: v1.0
-name: ''
-agent:
-  machine:
-    type: ''
-    os_image: ''
 apiVersion: v1alpha
 kind: Project
 metadata:
   name: csid-event-lineage
-  description: ''
+  description: 'This repository holds OpenTelemetry Instrumentation extensions for Kafka Clients and Kafka Streams. Purpose of the extensions is to capture key/value payloads as they are Consumed and Produced by application.'
 spec:
   visibility: private
   repository:
