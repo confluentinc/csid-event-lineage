@@ -37,4 +37,3 @@ spec:
     - pull_request
     - forked_pull_request
     - tag
-blocks: []

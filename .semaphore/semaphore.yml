@@ -3,10 +3,9 @@ name: build-test-release
 agent:
   machine:
     type: s1-prod-ubuntu20-04-amd64-1
-    os_image: ''
 auto_cancel:
   running:
-    when: branch != 'master'
+    when: "branch != 'master'"
 execution_time_limit:
   hours: 1
 global_job_config:
@@ -34,10 +33,10 @@ global_job_config:
       - make docker-login-ci
       - sem-version java 11
 blocks:
-  - name: Build and test
+  - name: Build and Test
     task:
       jobs:
-        - name: Build and test
+        - name: Build and Test
           commands:
             - ./gradlew clean build test
           parallelism: 1

@@ -7,11 +7,7 @@ name: Publish to S3
 agent:
     machine:
         type: s1-prod-ubuntu20-04-amd64-1
-
 global_job_config:
-    env_vars:
-        - name: GRADLE_USER_HOME
-          value: "~/.gradle"
     secrets:
         - name: vault_sem2_approle
     prologue:
@@ -41,8 +37,6 @@ blocks:
           jobs:
             - name: Publish Artifacts
               commands:
-                - cache restore
-                - cache restore csid-event-lineage-ssh-keys
                 # export aws credentials for aws maven plugin
                 - export AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
                 - export AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
