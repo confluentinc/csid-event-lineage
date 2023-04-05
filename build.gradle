@@ -1,5 +1,6 @@
 plugins {
     id "java"
+    id "maven-publish"
     /*
     Instrumentation agent extension mechanism expects a single jar containing everything required
     for your extension. This also includes any external libraries that your extension uses and
@@ -20,6 +21,7 @@ allprojects {
         mavenLocal()
         maven {
             name 'confluent-codeartifact'
+            url "$mavenUrl"
             credentials {
                 username = "$mavenUsername"
                 password = "$mavenPassword"
