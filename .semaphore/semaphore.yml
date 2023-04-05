@@ -44,12 +44,7 @@ blocks:
       epilogue:
         always:
           commands:
-            - pwd
-            - ls instrumentation/**/build/test-results/**/*.xml
             - test-results publish instrumentation/**/build/test-results/**/*.xml
-      env_vars:
-        - name: SEMAPHORE_LOG_LEVEL
-          value: DEBUG
 after_pipeline:
   task:
     jobs:
