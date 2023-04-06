@@ -23,8 +23,15 @@ SET row_security = off;
 CREATE USER caas;
 
 CREATE SCHEMA deployment;
+CREATE SCHEMA cc_capacity_service;
+
+CREATE DOMAIN cc_capacity_service.k8s_cluster_id AS text NOT NULL;
+CREATE DOMAIN cc_capacity_service.logical_cluster_id AS text NOT NULL;
+CREATE DOMAIN cc_capacity_service.physical_cluster_id AS text NOT NULL;
+CREATE DOMAIN cc_capacity_service.network_region_id AS text NOT NULL;
 
 ALTER SCHEMA deployment OWNER TO caas;
+ALTER SCHEMA cc_capacity_service OWNER to caas;
 
 CREATE SCHEMA IF NOT EXISTS auditing;
 
@@ -311,15 +318,40 @@ CREATE TABLE physical_cluster (
     multitenant_oauth_superuser_disabled bool DEFAULT false NOT NULL,
     provider jsonb DEFAULT '{}'::jsonb,
     resource_profile jsonb,
-    routing_scheme character varying(32) DEFAULT 'V3' NOT NULL
+    routing_scheme character varying(32) DEFAULT 'V3' NOT NULL,
+    -- V2 physical cluster API support below -- 
+    config_metadata jsonb DEFAULT '{}'::jsonb,
+    custom_resource_type text DEFAULT '' not null,
+    custom_resource jsonb DEFAULT '{}'::jsonb,
+    etag text DEFAULT '' not null,
+    operation jsonb DEFAULT '{}'::jsonb
 );
-
 
 ALTER TABLE physical_cluster OWNER TO caas;
 
 ALTER TABLE deployment.physical_cluster ADD CONSTRAINT "fk-physical_cluster-network_isolation_domain" FOREIGN KEY ("network_isolation_domain_id") REFERENCES deployment.network_isolation_domain ("id") NOT VALID;
 
 ALTER TABLE deployment.physical_cluster VALIDATE CONSTRAINT "fk-physical_cluster-network_isolation_domain";
+
+CREATE FUNCTION physical_cluster_updated() RETURNS TRIGGER
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.modified := now();
+  NEW.etag := md5(NEW::text)::text;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_physical_cluster_updated
+    BEFORE UPDATE ON physical_cluster
+    FOR EACH ROW
+    EXECUTE PROCEDURE physical_cluster_updated();
+
+CREATE TRIGGER trigger_physical_cluster_created  -- we want to set the etag on INSERT too. Might as well call this func
+    BEFORE INSERT ON physical_cluster
+    FOR EACH ROW
+    EXECUTE PROCEDURE physical_cluster_updated();
 
 
 --
@@ -438,7 +470,6 @@ CREATE TABLE organization (
     name character varying(64) NOT NULL,
     deactivated boolean DEFAULT false NOT NULL,
     plan jsonb NOT NULL DEFAULT('{}'),
-    saml jsonb NOT NULL DEFAULT('{}'),
     sso jsonb NOT NULL DEFAULT('{}'),
     marketplace jsonb NOT NULL DEFAULT('{}'),
     resource_id TEXT NOT NULL,
@@ -494,14 +525,12 @@ CREATE TABLE physical_cluster_status (
     status_received timestamp without time zone,
     status_modified timestamp without time zone,
     last_initialized timestamp without time zone,
-    last_deleted timestamp without time zone
+    last_deleted timestamp without time zone,
+    -- Physical Cluster Operation API support
+    operation_status jsonb DEFAULT '{}'::jsonb
 );
 
 ALTER TABLE physical_cluster_status OWNER TO caas;
-
---
--- Name: entitlement; Type: TABLE; Schema: deployment;  Owner: caas
---
 
 CREATE TABLE entitlement (
     id integer NOT NULL,
@@ -787,7 +816,8 @@ CREATE TABLE region (
     config jsonb,
     created timestamp without time zone DEFAULT now() NOT NULL,
     modified timestamp without time zone DEFAULT now() NOT NULL,
-    name TEXT DEFAULT '' NOT NULL
+    name TEXT DEFAULT '' NOT NULL,
+    byoc_config jsonb
 );
 
 
@@ -1005,6 +1035,12 @@ CREATE TABLE secret (
     config jsonb DEFAULT '{}' NOT NULL
 );
 
+CREATE INDEX secret_logical_clusters_idx ON secret USING gin ((config -> 'api_key' -> 'logical_clusters') jsonb_path_ops);
+CREATE INDEX secret_client_logical_clusters_idx ON secret USING gin ((config -> 'api_key' -> 'client_logical_clusters') jsonb_path_ops);
+CREATE INDEX secret_api_key_org_resource_index ON secret USING btree ((((config -> 'api_key'::text) ->> 'organization_resource_id'::text)));
+CREATE INDEX secret_apikey_key_index ON secret USING btree ((((config -> 'api_key'::text) ->> 'key'::text)));
+CREATE INDEX secret_deactivated_idx ON secret USING btree (deactivated);
+
 ALTER TABLE secret OWNER TO caas;
 
 --
@@ -1150,7 +1186,8 @@ CREATE TABLE billing_order (
     currency VARCHAR(16) NOT NULL,
     status INTEGER,
     billing_cycle INTEGER DEFAULT 0 NOT NULL,
-    effective_rate_card_date TIMESTAMP WITHOUT TIME ZONE DEFAULT to_timestamp(0) NOT NULL
+    effective_rate_card_date TIMESTAMP WITHOUT TIME ZONE DEFAULT to_timestamp(0) NOT NULL,
+    is_reseller boolean DEFAULT false
 );
 
 ALTER TABLE billing_order OWNER TO caas;
@@ -1175,7 +1212,7 @@ CREATE TABLE api_key_v2 (
   modified TIMESTAMP WITHOUT TIME ZONE DEFAULT current_timestamp NOT NULL,
   owner_resource_id TEXT NOT NULL CHECK (owner_resource_id <> ''),
   owner_type TEXT NOT NULL CHECK (owner_type <> ''),
-  owner_id INTEGER NOT NULL CHECK (owner_id > 0),
+  owner_id INTEGER NOT NULL CHECK (owner_id >= 0),
   resource_id TEXT NOT NULL CHECK (resource_id <> ''),
   resource_type TEXT NOT NULL CHECK (resource_type <> ''),
   organization_resource_id TEXT NOT NULL CHECK (organization_resource_id <> ''),
@@ -1220,7 +1257,7 @@ CREATE TABLE deployment.api_key_v2_internal_client (
     client_type text NOT NULL
 );
 
-CREATE INDEX api_key_v2_internal_client_api_key_idx ON deployment.api_key_v2_internal_client USING btree (api_key);
+CREATE UNIQUE INDEX api_key_v2_internal_client_api_key_idx ON deployment.api_key_v2_internal_client USING btree (api_key);
 CREATE INDEX api_key_v2_internal_client_client_type_idx ON deployment.api_key_v2_internal_client USING btree (client_type);
 
 ALTER TABLE ONLY deployment.api_key_v2_internal_client
@@ -2439,8 +2476,10 @@ CREATE SEQUENCE deployment.marketplace_usage_feedback_id_seq
     CACHE 1;
 
 --
--- Name: marketplace_usage_feedback_id_seq; Type: SEQUENCE OWNED BY; Schema: deployment; Owner: -
+-- Name: marketplace_usage_feedback_id_seq; Type: SEQUENCE OWNED BY; Schema: deployment; Owner: caas
 --
+
+ALTER SEQUENCE deployment.marketplace_usage_feedback_id_seq OWNER TO caas;
 
 ALTER SEQUENCE deployment.marketplace_usage_feedback_id_seq OWNED BY deployment.marketplace_usage_feedback.id;
 
@@ -2476,6 +2515,129 @@ CREATE TABLE deployment.marketplace_registration (
 
 ALTER TABLE deployment.marketplace_registration OWNER TO caas;
 ALTER TABLE deployment.marketplace_registration_id_seq OWNER TO caas;
+
+--
+-- Name: ddl_history; Type: TABLE; Schema: deployment; Owner: -
+--
+
+CREATE TABLE deployment.cps_ddl_history (
+    id integer NOT NULL,
+    ddl_date timestamp with time zone,
+    who text DEFAULT CURRENT_USER,
+    ddl_tag text,
+    object_name text
+);
+
+
+--
+-- Name: ddl_history_id_seq; Type: SEQUENCE; Schema: deployment; Owner: -
+--
+
+CREATE SEQUENCE deployment.cps_ddl_history_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ddl_history_id_seq; Type: SEQUENCE OWNED BY; Schema: deployment; Owner: -
+--
+
+ALTER SEQUENCE deployment.cps_ddl_history_id_seq OWNED BY deployment.cps_ddl_history.id;
+
+
+--
+-- Name: dml_history; Type: TABLE; Schema: deployment; Owner: -
+--
+
+CREATE TABLE deployment.cps_dml_history (
+    id SERIAL PRIMARY KEY,
+    tstamp timestamp without time zone DEFAULT now(),
+    schemaname text,
+    tabname text,
+    operation text,
+    who text DEFAULT CURRENT_USER,
+    new_val json,
+    old_val json,
+    app_user text,
+    request_id text
+);
+
+--
+-- Name: ddl_history id; Type: DEFAULT; Schema: deployment; Owner: -
+--
+
+ALTER TABLE ONLY deployment.cps_ddl_history ALTER COLUMN id SET DEFAULT nextval('deployment.cps_ddl_history_id_seq'::regclass);
+
+--
+-- Name: ddl_history ddl_history_pkey; Type: CONSTRAINT; Schema: deployment; Owner: -
+--
+
+ALTER TABLE ONLY deployment.cps_ddl_history
+    ADD CONSTRAINT ddl_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: entitlement; Type: TABLE; Schema: deployment;  Owner: caas
+--
+
+ALTER TABLE deployment.cps_dml_history OWNER TO caas;
+ALTER TABLE deployment.cps_ddl_history OWNER TO caas;
+ALTER TABLE deployment.cps_ddl_history_id_seq OWNER TO caas;
+
+--
+-- Name: cps_dml_trigger(); Type: FUNCTION; Schema: public; Owner: cloud-partnerships
+--
+
+CREATE FUNCTION cps_dml_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        IF TG_OP = 'INSERT'
+        THEN
+            INSERT INTO deployment.cps_dml_history(tabname, schemaname, operation, new_val, app_user, request_id) VALUES (TG_RELNAME, TG_TABLE_SCHEMA, TG_OP, row_to_json(NEW), COALESCE(current_setting('var.app_user', true), ''), COALESCE(current_setting('var.request_id', true), ''));
+            RETURN NEW;
+        ELSIF TG_OP = 'UPDATE'
+        THEN
+            INSERT INTO deployment.cps_dml_history(tabname, schemaname, operation, new_val, old_val, app_user, request_id) VALUES (TG_RELNAME, TG_TABLE_SCHEMA, TG_OP, row_to_json(NEW), row_to_json(OLD), COALESCE(current_setting('var.app_user', true), ''), COALESCE(current_setting('var.request_id', true), ''));
+            RETURN NEW;
+        ELSIF TG_OP = 'DELETE'
+        THEN
+            INSERT INTO deployment.cps_dml_history(tabname, schemaname, operation, old_val, app_user, request_id) VALUES (TG_RELNAME, TG_TABLE_SCHEMA, TG_OP, row_to_json(OLD), COALESCE(current_setting('var.app_user', true), ''), COALESCE(current_setting('var.request_id', true), ''));
+            RETURN OLD;
+        END IF;
+    END;
+$$;
+
+--
+-- Name: entitlement t; Type: TRIGGER; Schema: deployment; Owner: -
+--
+
+CREATE TRIGGER entitlement_dml_trigger BEFORE INSERT OR DELETE OR UPDATE ON deployment.entitlement FOR EACH ROW EXECUTE PROCEDURE cps_dml_trigger();
+
+--
+-- Name: marketplace_listener_errors t; Type: TRIGGER; Schema: deployment; Owner: -
+--
+
+CREATE TRIGGER marketplace_listener_dml_trigger BEFORE INSERT OR DELETE OR UPDATE ON deployment.marketplace_listener_errors FOR EACH ROW EXECUTE PROCEDURE cps_dml_trigger();
+
+
+--
+-- Name: marketplace_registration t; Type: TRIGGER; Schema: deployment; Owner: -
+--
+
+CREATE TRIGGER marketplace_registration_dml_trigger BEFORE INSERT OR DELETE OR UPDATE ON deployment.marketplace_registration FOR EACH ROW EXECUTE PROCEDURE cps_dml_trigger();
+
+
+--
+-- Name: usage_metrics_errors t; Type: TRIGGER; Schema: deployment; Owner: -
+--
+
+CREATE TRIGGER usage_metrics_dml_trigger BEFORE INSERT OR DELETE OR UPDATE ON deployment.usage_metrics_errors FOR EACH ROW EXECUTE PROCEDURE cps_dml_trigger();
+
 --
 -- Data for Name: account; Type: TABLE DATA; Schema: deployment; Owner: caas
 --
@@ -2887,7 +3049,7 @@ ALTER TABLE control_plane.upgrade_request OWNER TO caas;
 -- Name: upgrade_task; Type: TABLE; Schema: control_plane; Owner: caas
 --
 CREATE TABLE control_plane.upgrade_task (
-    cluster_id public.physical_cluster_id NOT NULL, -- id of the resource being acted upon (for example, a physical cluster id, a k8s cluster id, etc)
+    cluster_id text NOT NULL, -- id of the resource being acted upon (for example, a physical cluster id, a k8s cluster id, etc)
     update_id text, -- id of the underlying operation (for example, the roll id from Scheduler's Roll Service)
     dedicated_cluster boolean, -- deprecated
     upgrade_id INTEGER NOT NULL,
@@ -2912,11 +3074,12 @@ ALTER TABLE control_plane.upgrade_task OWNER TO caas;
 -- priority/sensitive customers or we do not want upgrades for them
 CREATE TABLE control_plane.skip_upgrade_rules (
     id SERIAL PRIMARY KEY,
-    cluster_id public.physical_cluster_id NOT NULL,
+    cluster_id text NOT NULL,
     created timestamp without time zone DEFAULT now() NOT NULL,
     activated timestamp without time zone DEFAULT now()  NOT NULL,
     deactivated timestamp without time zone DEFAULT '2035-12-31 00:00:00',
-    description text
+    description text,
+    cluster_type VARCHAR(32) -- TODO: Set to NOT NULL once backfill is done
 );
 ALTER TABLE control_plane.skip_upgrade_rules OWNER TO caas;
 
@@ -3096,6 +3259,27 @@ ALTER TABLE kafka.rollout_heuristics OWNER TO caas;
 CREATE INDEX IF NOT EXISTS idx_rollout_heuristics_plan_id ON kafka.rollout_heuristics (plan_id);
 
 --
+-- Name: rollout_windows; Type: TABLE; Schema: kafka; Owner: caas
+--
+
+CREATE TABLE kafka.rollout_windows (
+    window_id VARCHAR(100) PRIMARY KEY,
+    cluster_id VARCHAR(100) REFERENCES deployment.physical_cluster (id),
+    org_id VARCHAR(100),
+    org_res_id VARCHAR(100),
+    start_time TIMESTAMP WITHOUT TIME ZONE,
+    end_time TIMESTAMP WITHOUT TIME ZONE,
+    repeat_interval INT DEFAULT 0,
+    window_notes TEXT,
+    created_by VARCHAR(50) NOT NULL,
+    created_time TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    updated_by VARCHAR(50) NOT NULL,
+    updated_time TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE kafka.rollout_windows OWNER TO caas;
+CREATE INDEX IF NOT EXISTS idx_rollout_windows_cluster_id ON kafka.rollout_windows (cluster_id);
+
+--
 -- Storage Class
 --
 
@@ -3209,16 +3393,17 @@ CREATE SEQUENCE IF NOT EXISTS deployment.zone_num START WITH 1 INCREMENT 1 NO CY
 ALTER TABLE deployment.zone_num OWNER TO caas;
 
 CREATE TABLE IF NOT EXISTS deployment.zone (
-    id              text PRIMARY KEY DEFAULT ('zone-' || nextval('deployment.zone_num')::text),
-    zone_id         text NOT NULL,
-    name            text NOT NULL,
-    region_id       text NOT NULL,
-    sni_enabled     boolean DEFAULT true NOT NULL,
-    schedulable     boolean DEFAULT true NOT NULL,
-    created         timestamp without time zone DEFAULT now() NOT NULL,
-    modified        timestamp without time zone DEFAULT now() NOT NULL,
-    deactivated     timestamp without time zone DEFAULT NULL,
-    realm           text DEFAULT ''::text NOT NULL
+    id                  text PRIMARY KEY DEFAULT ('zone-' || nextval('deployment.zone_num')::text),
+    zone_id             text NOT NULL,
+    name                text NOT NULL,
+    region_id           text NOT NULL,
+    sni_enabled         boolean DEFAULT true NOT NULL,
+    schedulable         boolean DEFAULT true NOT NULL,
+    created             timestamp without time zone DEFAULT now() NOT NULL,
+    modified            timestamp without time zone DEFAULT now() NOT NULL,
+    deactivated         timestamp without time zone DEFAULT NULL,
+    realm               text DEFAULT ''::text NOT NULL,
+    schedulable_feature jsonb DEFAULT '{}' NOT NULL
 );
 ALTER TABLE deployment.zone OWNER TO caas;
 
@@ -3487,7 +3672,8 @@ INSERT INTO rbac.role_binding (id, user_id, role_name, created_by, modified_by) 
 INSERT INTO rbac.role_binding (id, user_id, role_name, created_by, modified_by) VALUES ('rb-s-000001', 'rbac-migrate-cli', 'CCloudRoleBindingAdmin', 'seed', 'seed');
 -- 'rb-s-000002' was previously used for a schedulerserviceadamin role but has since been removed as it's no longer needed
 INSERT INTO rbac.role_binding (id, user_id, role_name, created_by, modified_by) VALUES ('rb-s-000003', 'notificationserviceadmin', 'CCloudRoleBindingViewer', 'seed', 'seed');
-
+INSERT INTO rbac.role_binding (id, user_id, role_name, created_by, modified_by) VALUES ('rb-s-000027', 'kafkaqueuesadmin', 'CCloudTopicRoleBindingAdmin', 'seed', 'seed');
+INSERT INTO rbac.role_binding (id, user_id, role_name, created_by, modified_by) VALUES ('rb-s-000028', 'kafkaqueuesadmin', 'CCloudGroupRoleBindingAdmin', 'seed', 'seed');
 
 -- The CDX tables are maintained here:https://github.com/confluentinc/cc-cdx-operations/blob/master/infra/db-operations/resources/schema.sql
 --
@@ -3740,7 +3926,7 @@ CREATE TABLE cloud_growth.activation_status_cluster
     first_usage_active_1tb_date     timestamp without time zone,                        -- the initial date this cluster was first labeled as usage_active_1tb
     first_usage_active_10tb_date    timestamp without time zone,                        -- the initial date this cluster was first labeled as usage_active_10tb
     CONSTRAINT pk_activation_status_cluster PRIMARY KEY (id, compute_date)
-) PARTITION BY RANGE (compute_date);
+);
 CREATE INDEX IF NOT EXISTS activation_status_cluster_compute_date_cluster_id_idx ON cloud_growth.activation_status_cluster USING btree (compute_date DESC, cluster_id);
 CREATE INDEX IF NOT EXISTS activation_status_cluster_compute_date_org_id_cluster_id_idx ON cloud_growth.activation_status_cluster USING btree (compute_date DESC, org_id, cluster_id);
 ALTER TABLE cloud_growth.activation_status_cluster OWNER TO cc_activation_status;
@@ -3812,15 +3998,17 @@ ALTER TABLE atlas.certificate_scheme_num OWNER TO caas;
 
 CREATE TABLE IF NOT EXISTS atlas.certificate_scheme
 (
-    id                      text PRIMARY KEY DEFAULT ('cs-' || nextval('atlas.certificate_scheme_num')::text),
-    name                    text NOT NULL,
-    created                 timestamp without time zone DEFAULT now() NOT NULL,
-    modified                timestamp without time zone DEFAULT now() NOT NULL,
-    deactivated             timestamp without time zone DEFAULT NULL,
-    enable_preallocation    text NOT NULL,
-    enable_recycle          boolean,
-    domain_elements         jsonb DEFAULT '{}' NOT NULL,
-    is_shareable            boolean DEFAULT false
+    id                          text PRIMARY KEY DEFAULT ('cs-' || nextval('atlas.certificate_scheme_num')::text),
+    name                        text NOT NULL,
+    created                     timestamp without time zone DEFAULT now() NOT NULL,
+    modified                    timestamp without time zone DEFAULT now() NOT NULL,
+    deactivated                 timestamp without time zone DEFAULT NULL,
+    enable_preallocation        text NOT NULL,
+    enable_recycle              boolean,
+    domain_elements             jsonb DEFAULT '{}' NOT NULL,
+    is_shareable                boolean DEFAULT false,
+    internal_domain_elements    jsonb,
+    custom_domain_token_map     jsonb DEFAULT '{}' NOT NULL
 );
 ALTER TABLE atlas.certificate_scheme OWNER TO caas;
 
@@ -3829,6 +4017,9 @@ ALTER TABLE atlas.certificate_num OWNER TO caas;
 
 CREATE SEQUENCE IF NOT EXISTS atlas.domain_num START WITH 1 INCREMENT 1 NO CYCLE NO MINVALUE NO MAXVALUE;
 ALTER TABLE atlas.domain_num OWNER TO caas;
+
+CREATE SEQUENCE IF NOT EXISTS atlas.internal_domain_num START WITH 1 INCREMENT 1 NO CYCLE NO MINVALUE NO MAXVALUE;
+ALTER TABLE atlas.internal_domain_num OWNER TO caas;
 
 CREATE TABLE IF NOT EXISTS atlas.certificate
 (
@@ -3847,7 +4038,8 @@ CREATE TABLE IF NOT EXISTS atlas.certificate
     storage_type            text NOT NULL,
     storage_location        text NOT NULL,
     domain_id               text DEFAULT ('dom-' || nextval('atlas.domain_num')::text),
-    domain_list             text[] DEFAULT array[]::text[] NOT NULL
+    domain_list             text[] DEFAULT array[]::text[] NOT NULL,
+    internal_domain_list    text[] DEFAULT array[]::text[]
 );
 ALTER TABLE ONLY atlas.certificate ADD CONSTRAINT certificate_scheme_id_fkey FOREIGN KEY (certificate_scheme_id) REFERENCES atlas.certificate_scheme(id) NOT VALID;
 ALTER TABLE ONLY atlas.certificate VALIDATE CONSTRAINT certificate_scheme_id_fkey;
@@ -3937,6 +4129,27 @@ CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION hstore IS 'data type for storing sets of (key, value) pairs';
+
+------------------------------------------------------------
+------------------------------------------------------------
+--
+-- Table cert_registry
+--
+
+CREATE TABLE IF NOT EXISTS deployment.cert_registry (
+    id serial PRIMARY KEY,
+    k8s_id public.k8s_cluster_id NOT NULL REFERENCES deployment.k8s_cluster (id),
+    k8s_namespace varchar(64) NOT NULL,
+    secret_id INTEGER NOT NULL REFERENCES deployment.secret (id),
+    created timestamp without time zone DEFAULT now() NOT NULL,
+    modified timestamp without time zone DEFAULT now() NOT NULL,
+    deactivated timestamp without time zone
+);
+
+CREATE INDEX IF NOT EXISTS k8s_id_idx ON deployment.cert_registry (k8s_id);
+CREATE INDEX IF NOT EXISTS secret_id_idx ON deployment.cert_registry (secret_id);
+
+ALTER TABLE deployment.cert_registry OWNER TO caas;
 
 --
 -- Name: sites; Type: TABLE; Schema: public; Owner: cc_networking_service
@@ -4276,6 +4489,8 @@ END
 $$;
 
 GRANT USAGE ON SCHEMA deployment TO GROUP cc_scheduler_service;
+GRANT USAGE ON SCHEMA cc_capacity_service TO GROUP cc_scheduler_service;
+GRANT ALL PRIVILEGES ON SCHEMA cc_capacity_service TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.connect_error_message_mappings TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.connect_plugin TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.connect_task_usage TO cc_scheduler_service;
@@ -4291,6 +4506,7 @@ GRANT ALL PRIVILEGES ON TABLE deployment.physical_cluster_status TO cc_scheduler
 GRANT ALL PRIVILEGES ON TABLE deployment.region TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.roll TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.secret TO cc_scheduler_service;
+GRANT ALL PRIVILEGES ON TABLE deployment.cert_registry TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.zone TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.realm TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.storage_class TO cc_scheduler_service;
@@ -4313,6 +4529,7 @@ GRANT ALL PRIVILEGES ON SEQUENCE deployment.connect_error_message_mappings_id_se
 GRANT ALL PRIVILEGES ON SEQUENCE deployment.connect_plugin_id_seq TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON SEQUENCE deployment.zone_num TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON SEQUENCE deployment.secret_id_seq TO cc_scheduler_service;
+GRANT ALL PRIVILEGES ON SEQUENCE deployment.cert_registry_id_seq TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON SEQUENCE deployment.connect_task_usage_seq TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON SEQUENCE deployment.k8s_cluster_num TO cc_scheduler_service;
 GRANT ALL PRIVILEGES ON SEQUENCE deployment.roll_id_seq TO cc_scheduler_service;
@@ -4479,6 +4696,7 @@ GRANT ALL PRIVILEGES ON TABLE kafka.rollout_plans TO cc_kafka_platform_manager;
 GRANT ALL PRIVILEGES ON TABLE kafka.rollout_phases TO cc_kafka_platform_manager;
 GRANT ALL PRIVILEGES ON TABLE kafka.rollout_clusters TO cc_kafka_platform_manager;
 GRANT ALL PRIVILEGES ON TABLE kafka.rollout_heuristics TO cc_kafka_platform_manager;
+GRANT ALL PRIVILEGES ON TABLE kafka.rollout_windows TO cc_kafka_platform_manager;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA kafka TO cc_kafka_platform_manager;
 
 GRANT USAGE ON SCHEMA deployment TO GROUP cc_kafka_platform_manager;
@@ -4578,6 +4796,7 @@ GRANT ALL PRIVILEGES ON TABLE deployment.cloud TO cc_topology_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.region TO cc_topology_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.zone TO cc_topology_service;
 GRANT ALL PRIVILEGES ON TABLE deployment.realm TO cc_topology_service;
+GRANT ALL PRIVILEGES ON SEQUENCE deployment.zone_num TO cc_topology_service;
 
 --
 -- PostgreSQL database dump complete

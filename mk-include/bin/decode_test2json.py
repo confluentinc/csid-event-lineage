@@ -507,7 +507,7 @@ def write_failed_tests_file():
         except FileNotFoundError:
             print("failed to write failed tests, file doesn't exist and couldn't be written two")
     elif failed_tests_str:
-        print(f"to rerun tests that failed, run you're go test command with -run '{failed_tests_str}'")
+        print(f"to rerun tests that failed, run your go test command with -run '{failed_tests_str}'")
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ RELEASE_PRECOMMIT += helm-set-bumped-version helm-update-floating-deps
 RELEASE_MAKE_TARGETS += helm-release $(HELM_DOWNSTREAM_CHARTS)
 endif
 
-CHART_VERSION := $(VERSION_NO_V)
+CHART_VERSION ?= $(VERSION_NO_V)
 BUMPED_CHART_VERSION := $(BUMPED_CLEAN_VERSION)
 
 CHART_NAMESPACE := $(CHART_NAME)-dev
@@ -108,24 +108,25 @@ $(HELM_REPO_CACHE)/gloo-index.yaml:
 	@echo 💬 helm repo gloo repo missing, adding...
 	@$(HELM_BINARY) repo add gloo https://storage.googleapis.com/solo-public-helm
 
-$(HELM_REPO_CACHE)/flink-operator-index.yaml:
-	@echo 💬 helm repo flink-operator repo missing, adding...
-	@$(HELM_BINARY) repo add flink-operator https://downloads.apache.org/flink/flink-kubernetes-operator-1.2.0
+$(HELM_REPO_CACHE)/gloo-mesh-index.yaml:
+	@echo 💬 helm repo gloo mesh repo missing, adding...
+	@$(HELM_BINARY) repo add gloo-mesh-enterprise https://storage.googleapis.com/gloo-mesh-enterprise/gloo-mesh-enterprise
+	@$(HELM_BINARY) repo add gloo-mesh-agent https://storage.googleapis.com/gloo-mesh-enterprise/gloo-mesh-agent
 
 .PHONY: helm-update-repo
-helm-update-repo:  $(HELM_REPO_CACHE)/stable-index.yaml $(HELM_REPO_CACHE)/gloo-index.yaml $(HELM_REPO_CACHE)/flink-operator-index.yaml
+helm-update-repo:  $(HELM_REPO_CACHE)/stable-index.yaml $(HELM_REPO_CACHE)/gloo-index.yaml $(HELM_REPO_CACHE)/gloo-mesh-index.yaml
 	@echo 💬 updating index / cache of helm repos
 	@$(HELM_BINARY) repo update
 
 .PHONY: helm-install-deps
 ## Install subchart files in charts/ based on Chart.lock file
-helm-install-deps: $(HELM_REPO_CACHE)/stable-index.yaml $(HELM_REPO_CACHE)/gloo-index.yaml $(HELM_REPO_CACHE)/flink-operator-index.yaml
+helm-install-deps: $(HELM_REPO_CACHE)/stable-index.yaml $(HELM_REPO_CACHE)/gloo-index.yaml $(HELM_REPO_CACHE)/gloo-mesh-index.yaml
 	@echo 💬 building charts/ directory from Chart.lock
 	$(HELM_BINARY) dep build $(CHART_LOCAL_PATH) $(HELM_DEP_BUILD_EXTRA_ARGS)
 
 .PHONY: helm-update-floating-deps
 ## Update floating subchart versions that match the semantic version ranges in Chart.yaml
-helm-update-floating-deps: $(HELM_REPO_CACHE)/stable-index.yaml $(HELM_REPO_CACHE)/gloo-index.yaml $(HELM_REPO_CACHE)/flink-operator-index.yaml
+helm-update-floating-deps: $(HELM_REPO_CACHE)/stable-index.yaml $(HELM_REPO_CACHE)/gloo-index.yaml $(HELM_REPO_CACHE)/gloo-mesh-index.yaml
 	@echo 💬 updating floating chart dependencies and updating lock file
 	$(HELM_BINARY) dep update $(CHART_LOCAL_PATH)
 	git add $(CHART_LOCK_FILE) || true

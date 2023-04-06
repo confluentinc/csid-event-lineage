@@ -1,8 +1,8 @@
 # Common make targets for using https://github.com/roboll/helmfile
 # Helmfile is a tool for automated git-ops style deployments
 
-HELMFILE_VERSION := v0.133.0
-HELMDIFF_VERSION := 3.1.2
+HELMFILE_VERSION ?= v0.144.0
+HELMDIFF_VERSION ?= 3.6.0
 HELMFILE_URL := https://github.com/roboll/helmfile/releases/download
 
 HELMFILES ?= $(strip $(shell find -type f -name helmfile.yaml -printf '%p '))

@@ -7,6 +7,7 @@ MAKE ?= make
 # Include this file first
 _empty :=
 _space := $(_empty) $(empty)
+_comma := ,
 
 # Master branch
 MASTER_BRANCH ?= master
@@ -135,7 +136,7 @@ endif
 BRANCH_NAME ?= $(shell git rev-parse --abbrev-ref HEAD || true)
 # Set RELEASE_BRANCH if we're on master or vN.N.x
 # special case for ce-kafka: v0.NNNN.x-N.N.N-ce-SNAPSHOT, v0.NNNN.x-N.N.N-N-ce
-RELEASE_BRANCH := $(shell echo $(BRANCH_NAME) | grep -E '^($(MASTER_BRANCH)|v[0-9]+\.[0-9]+\.x(-[0-9]+\.[0-9]+\.[0-9](-[0-9])?(-ce)?(-SNAPSHOT)?)?)$$')
+RELEASE_BRANCH := $(shell echo $(BRANCH_NAME) | grep -E '^($(MASTER_BRANCH)|v[0-9]+\.[0-9]+\.x(-[0-9]+\.[0-9]+\.[0-9](-[0-9])?(-ce)?(-SNAPSHOT)?)?)$$|^release-[0-9]+\.[0-9]+-confluent$$')
 # assume the remote name is origin by default
 GIT_REMOTE_NAME ?= origin
 
@@ -209,6 +210,13 @@ ifeq ($(DOCKER_LOGIN), true)
 INIT_CI_TARGETS += docker-login-ci
 endif
 
+ARCH ?= $(shell uname -m)
+ifeq ($(ARCH),x86_64)
+ARCH := amd64
+else ifeq ($(ARCH),aarch64)
+ARCH := arm64
+endif
+
 .PHONY: update-mk-include
 update-mk-include:
 	set -e ;\
@@ -257,17 +265,6 @@ install-github-cli:
 	export GITHUB_CLI_VERSION=$(GITHUB_CLI_VERSION) ;\
 	$(MK_INCLUDE_BIN)/install-github-cli.sh
 	$(GH) config set prompt disabled
-
-.PHONY: trigger-mk-include-update-pr
-## trigger a mk-include update PR if mk-include is behind pinned version
-trigger-mk-include-update-pr:
-ifeq (true, $(UPDATE_MK_INCLUDE))
-	@$(MAKE) update-mk-include
-	$(GIT) push -f $(GIT_REMOTE_NAME) $(MK_INCLUDE_UPDATE_BRANCH)
-	@echo "update cc-mk-include finished, open update PR"
-	$(GH) pr create -B $(MASTER_BRANCH) -b "update mk-include" -t $(MK_INCLUDE_UPDATE_COMMIT_MESSAGE) -H $(MK_INCLUDE_UPDATE_BRANCH)
-endif
-	@:
 
 .PHONY: github-cli-auth
 github-cli-auth:
@@ -321,22 +318,6 @@ add-paas-github-templates:
 
 	@git show
 	@echo "Template added."
-	@echo "Create PR with 'git push && git log --format=%B -n 1 | hub pull-request -F -'"
-
-.PHONY: add-auto-merge-templates
-add-auto-merge-templates:
-	$(eval project_root := $(shell git rev-parse --show-toplevel))
-	$(eval mk_include_relative_path := $(project_root)/mk-include)
-	$(if $(wildcard $(project_root)/.github/bulldozer.yml),$(an error ".github/bulldozer.yml already exists, try deleting it"),)
-	$(if $(filter $(BRANCH_NAME),$(MASTER_BRANCH)),$(error "You must run this command from a branch: 'git checkout -b add-github-pr-template'"),)
-
-	@mkdir -p $(project_root)/.github
-	@cp $(mk_include_relative_path)/resources/bulldozer-template.yml $(project_root)/.github/bulldozer.yml
-	@git add $(project_root)/.github/bulldozer.yml
-	@git commit \
-		-m "Add bulldozer automerge template for PRs $(CI_SKIP)"
-	@git show
-	@echo "Auto merge template added."
 	@echo "Create PR with 'git push && git log --format=%B -n 1 | hub pull-request -F -'"
 
 .PHONY: docker-login-ci

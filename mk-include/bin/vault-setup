@@ -31,3 +31,15 @@ fi
 # Write the token to disk instead of VAULT_TOKEN
 vault login -no-print token="${token}" && echo "Successfully Logged Into Vault"
 unset token
+
+function renew_vault_token() {
+    while true
+    do
+      sleep 30m
+      echo -e "Refreshing vault token..."
+      vault token renew -increment=2h > /dev/null
+    done
+}
+
+# Put the renew vault token function in the background and let it continuously run as needed
+renew_vault_token &

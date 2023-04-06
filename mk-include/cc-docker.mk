@@ -17,6 +17,8 @@ DOCKER_FILE_PATH ?= .
 # Use this variable to skip pushing docker image to release if it exists already
 DOCKER_PUSH_RELEASE_SKIP_IF_PRESENT ?= false
 
+DOCKER_APPEND_ARCH_SUFFIX  ?= false
+
 # Use this variable to specify docker build options
 DOCKER_BUILD_OPTIONS ?=
 ifeq ($(CI),true)
@@ -72,8 +74,21 @@ QEMU_INIT_SCRIPT=$(MK_INCLUDE_BIN)/init-docker-builder.sh
 DOCKER_BUILDER = buildx-builder
 ARCH ?= amd64
 ARCH_SUFFIX = -$(ARCH)
+DOCKER_RELEASE_MULTIARCH = true
 else
 ARCH_SUFFIX = $(empty)
+endif
+
+set_arch_suffix =
+ifeq ($(DOCKER_APPEND_ARCH_SUFFIX), true)
+set_arch_suffix = true
+endif
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
+set_arch_suffix = true
+endif
+
+ifeq ($(set_arch_suffix), true)
+ARCH_SUFFIX = -$(ARCH)
 endif
 
 # Image Name
@@ -106,13 +121,17 @@ BUILD_TAG_LATEST_NOARCH ?= $(BUILD_PATH):latest
 BUILD_TAG ?= $(BUILD_TAG_NOARCH)$(ARCH_SUFFIX)
 BUILD_TAG_LATEST ?= $(BUILD_TAG_LATEST_NOARCH)$(ARCH_SUFFIX)
 
+# By default, cc-docker does not tag and push images with "latest" tag to remote repo
+# If a service has to use the "latest" version of an image, set this variable to true at the root level
+ALLOW_BUILD_LATEST_TAG ?= false
+
 # Set targets for standard commands
 CACHE_DOCKER_BASE_IMAGES ?= true
 ifeq ($(CACHE_DOCKER_BASE_IMAGES),true)
 INIT_CI_TARGETS += cache-docker-base-images
 endif
 
-RELEASE_POSTCOMMIT += push-docker sign-image
+RELEASE_POSTCOMMIT += push-docker
 BUILD_TARGETS += build-docker
 CLEAN_TARGETS += clean-images
 
@@ -124,7 +143,10 @@ DOCKER_BUILD_PRE += build-shared-target
 endif
 
 IMAGE_SIGNING_URL ?= 'https://imagesigning.prod.cire.aws.internal.confluent.cloud/v1/oidc/sign' 
-IMAGE_SIGNING_ENABLED ?= false
+IMAGE_SIGNING_ENABLED ?= true
+ifeq ($(IMAGE_SIGNING_ENABLED), true)
+RELEASE_POSTCOMMIT += sign-image
+endif
 
 .PHONY: show-docker
 ## Show docker variables
@@ -140,6 +162,7 @@ show-docker:
 	@echo "DOCKER_FILE: $(DOCKER_FILE)"
 	@echo "DOCKER_FILE_PATH: $(DOCKER_FILE_PATH)"
 	@echo "DOCKER_PUSH_RELEASE_SKIP_IF_PRESENT: $(DOCKER_PUSH_RELEASE_SKIP_IF_PRESENT)"
+	@echo "ALLOW_BUILD_LATEST_TAG: $(ALLOW_BUILD_LATEST_TAG)"
 
 .PHONY: cache-docker-base-images $(DOCKER_BASE_IMAGES:%=docker-cache.%)
 ## On Semaphore, use the cache to store/restore docker image to reduce transfer costs.
@@ -182,7 +205,7 @@ install-qemu-static:
 	$(QEMU_INIT_SCRIPT) $(DOCKER_BUILDER)
 
 .PHONY: build-shared-target
-build-shared-target:
+build-shared-target: install-qemu-static
 ifneq ($(DOCKER_SHARED_TARGET), $(empty))
 	docker buildx build $(DOCKER_BUILD_OPTIONS) \
 		--target=$(DOCKER_SHARED_TARGET) \
@@ -255,7 +278,11 @@ endif
 .PHONY: tag-docker
 ifeq ($(TAG_DOCKER_OVERRIDE),)
 ifeq ($(CI),true)
+ifeq ($(ALLOW_BUILD_LATEST_TAG),true)
 tag-docker: tag-docker-version-to-release tag-docker-latest
+else
+tag-docker: tag-docker-version-to-release
+endif
 else
 tag-docker: tag-docker-version
 endif
@@ -263,7 +290,7 @@ else
 tag-docker: $(TAG_DOCKER_OVERRIDE)
 endif
 
-ifeq ($(DOCKER_BUILD_MULTIARCH), true)
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
 .PHONY: tag-docker-version-arch
 ## tag mult-arch docker image for for dirty repo (GAR)
 tag-docker-version-arch:
@@ -275,7 +302,7 @@ endif
 	@echo 'create docker tag $(BUILD_PATH):$(IMAGE_VERSION)$(ARCH_SUFFIX) for dirty repo'
 	docker tag $(BUILD_TAG) $(DEVPROD_NONPROD_GAR_REPO)/$(BUILD_PATH):$(IMAGE_VERSION)$(ARCH_SUFFIX)
 
-ifeq ($(DOCKER_BUILD_MULTIARCH), true)
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
 .PHONY: tag-docker-version-arch-to-release
 ## tag multi-arch docker image version for release repo
 tag-docker-version-arch-to-release:
@@ -287,7 +314,7 @@ endif
 	@echo 'create docker tag $(BUILD_PATH):$(IMAGE_VERSION)$(ARCH_SUFFIX) for release repo'
 	docker tag $(BUILD_TAG) $(DOCKER_REPO)/$(BUILD_PATH):$(IMAGE_VERSION)$(ARCH_SUFFIX)
 
-ifeq ($(DOCKER_BUILD_MULTIARCH), true)
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
 .PHONY: tag-docker-latest-arch
 tag-docker-latest-arch:
 else
@@ -300,7 +327,11 @@ endif
 .PHONY: push-docker
 ifeq ($(PUSH_DOCKER_OVERRIDE),)
 ifeq ($(CI),true)
+ifeq ($(ALLOW_BUILD_LATEST_TAG),true)
 push-docker: push-docker-version-to-release push-docker-latest
+else
+push-docker: push-docker-version-to-release
+endif
 else
 push-docker: push-docker-version
 endif
@@ -308,7 +339,7 @@ else
 push-docker: $(PUSH_DOCKER_OVERRIDE)
 endif
 
-ifeq ($(DOCKER_BUILD_MULTIARCH), true)
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
 .PHONY: push-docker-latest-arch
 push-docker-latest-arch: tag-docker-latest-arch
 else
@@ -321,7 +352,7 @@ endif
 		--image-ids imageTag=latest$(ARCH_SUFFIX) --region us-west-2
 	docker push $(DOCKER_REPO)/$(BUILD_TAG_LATEST) || docker push $(DOCKER_REPO)/$(BUILD_TAG_LATEST)
 
-ifeq ($(DOCKER_BUILD_MULTIARCH), true)
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
 .PHONY: push-docker-version-arch
 ## Push multi-arch docker image version to dirty repo (GAR)
 push-docker-version-arch: restore-docker-version tag-docker-version-arch
@@ -333,7 +364,7 @@ endif
 	@echo 'push $(BUILD_TAG) to $(DEVPROD_NONPROD_GAR_REPO)'
 	docker push $(DEVPROD_NONPROD_GAR_REPO)/$(BUILD_TAG) || docker push $(DEVPROD_NONPROD_GAR_REPO)/$(BUILD_TAG)
 
-ifeq ($(DOCKER_BUILD_MULTIARCH), true)
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
 .PHONY: push-docker-version-arch-to-release
 ## Push multi-arch docker image version to release repo (ECR)
 push-docker-version-arch-to-release: restore-docker-version tag-docker-version-arch-to-release
@@ -349,7 +380,7 @@ else
 	docker push $(DOCKER_REPO)/$(BUILD_TAG) || docker push $(DOCKER_REPO)/$(BUILD_TAG)
 endif
 
-ifeq ($(DOCKER_BUILD_MULTIARCH), true)
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
 # All of these targets explicitly set IMAGE_VERSION, because they run after CI has pushed a new release branch.
 # Recursive calls to make at this point recompute the bumped version and bump it *again*, resulting in errors.
 # Long-term the fix is to not call make recursively and find another way to DRY these up.
@@ -448,17 +479,37 @@ clean-images:
 clean-all:
 	docker images -q -f label=io.confluent.caas=true | uniq | $(XARGS) docker rmi -f
 
-.PHONY: sign-image
-sign-image: push-docker-version-to-release
-ifeq ($(IMAGE_SIGNING_ENABLED),true)
-ifneq ($(DOCKER_BUILD_MULTIARCH), true)
-ifneq ($(RELEASE_BRANCH),$(_empty))
-	$(eval IMAGE_DIGEST := $(shell docker inspect --format="{{index .RepoDigests 0}}" "$(DOCKER_REPO)/$(BUILD_PATH):$(IMAGE_VERSION)" | cut -d'@' -f2))
+.PHONY: sign-image-index
+sign-image-index:
 	@curl -X POST \
+		-w "%{http_code}\n" \
 		$(IMAGE_SIGNING_URL) \
 		-H "Authorization: Bearer ${SEMAPHORE_OIDC_TOKEN}" \
 		-H "Content-Type: application/json" \
-		-d '{"images": [{"uri": "$(DOCKER_REPO)/$(BUILD_PATH)@$(IMAGE_DIGEST)"}]}'
+		-d '{"images": [{"uri": "$(DOCKER_REPO)/$(BUILD_PATH)@$(shell docker manifest push $(DOCKER_MULTIARCH_MANIFEST))"}]}'\
+		| cat | sed '/^2/q ; /^\([1,3,4,5,6,7,8,9]\)/{s//Error, please link this log in slack channel image-signing-service-help\n\1/ ; q1}'
+
+.PHONY: sign-image
+ifeq ($(DOCKER_RELEASE_MULTIARCH), true)
+sign-image:
+	$(MAKE) sign-image-arch ARCH=amd64 IMAGE_VERSION=$(IMAGE_VERSION)
+	$(MAKE) sign-image-arch ARCH=arm64 IMAGE_VERSION=$(IMAGE_VERSION)
+	$(MAKE) sign-image-index DOCKER_MULTIARCH_MANIFEST=$(DOCKER_REPO)/$(BUILD_PATH):$(IMAGE_VERSION)
+
+.PHONY: sign-image-arch
+sign-image-arch:
+else
+sign-image:
 endif
+ifeq ($(IMAGE_SIGNING_ENABLED),true)
+ifneq ($(RELEASE_BRANCH),$(_empty))
+	$(eval IMAGE_DIGEST := $(shell docker inspect --format="{{index .RepoDigests 0}}" "$(DOCKER_REPO)/$(BUILD_TAG)" | cut -d'@' -f2))
+	@curl -X POST \
+		-w "%{http_code}\n" \
+		$(IMAGE_SIGNING_URL) \
+		-H "Authorization: Bearer ${SEMAPHORE_OIDC_TOKEN}" \
+		-H "Content-Type: application/json" \
+		-d '{"images": [{"uri": "$(DOCKER_REPO)/$(BUILD_PATH)@$(IMAGE_DIGEST)"}]}' \
+		| cat | sed '/^2/q ; /^\([1,3,4,5,6,7,8,9]\)/{s//Error, please link this log in slack channel image-signing-service-help\n\1/ ; q1}'
 endif
 endif

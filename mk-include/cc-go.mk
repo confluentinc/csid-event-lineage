@@ -1,12 +1,18 @@
 # Defaults
 GO ?= $(shell which go)# default go bin to whatever's on the path
-GO_VERSION := $(shell $(GO) version)# the version of the go bin
+GO_VERSION := $(subst go,,$(shell $(GO) env GOVERSION))# the version of the go bin
 GO_ALPINE ?= true# default to alpine images
 GO_STATIC ?= true# default to static binaries
 GO_BINS ?= main.go=main# format: space seperated list of source.go=output_bin
 GO_OUTDIR ?= bin# default to output bins to bin/
 GO_LDFLAGS ?= -X main.version=$(VERSION)# Setup LD Flags
 GO_EXTRA_FLAGS ?=
+GO_FIPS_ENV_VARS ?=
+GO_FIPS_ENABLE_INPLACE ?= false
+
+GO_VERSION_MAJOR := $(word 1,$(subst ., ,$(GO_VERSION)))
+GO_VERSION_MINOR := $(or $(word 2,$(subst ., ,$(GO_VERSION))),0)
+GO_VERSION_PATCH := $(or $(word 3,$(subst ., ,$(GO_VERSION))),0)
 
 # port to which dlv debugger attaches
 GOLAND_PORT ?= 12345
@@ -44,7 +50,7 @@ GO_TEST_ARGS += -run "$(TESTS_TO_RUN)"
 endif
 GO_TEST_PACKAGE_ARGS ?= ./...
 
-GO_GENERATE_ARGS ?=
+GO_GENERATE_ARGS ?= ./...
 
 # use golangci-lint
 GOLANGCI_LINT ?= false
@@ -52,11 +58,33 @@ GOLANGCI_LINT_CONFIG ?= $(MK_INCLUDE_RESOURCE)/.golangci.yml
 GOLANGCI_LINT_TESTS ?= false
 GOLANGCI_LINT_TESTS_CONFIG ?= $(MK_INCLUDE_RESOURCE)/.golangci-tests.yml
 
+# Usage: $(call go-version-at-least,MAJOR,[MINOR,[PATCH]])
+# Test whether the current Go toolchain version satisfies a minimum version.
+# On success, expands to the current Go version. Otherwise, expands to the empty
+# string. If MINOR or PATCH are not specified, they default to 0.
+# Example:
+#   ifneq (,$(call go-version-at-least,1,19)
+#     ... actions for Go versions 1.19 and newer
+#   endif
+go-version-at-least = $(strip $(shell \
+		test $$(( ((($(GO_VERSION_MAJOR)*1000)+$(GO_VERSION_MINOR))*1000)+$(GO_VERSION_PATCH) )) \
+			-ge $$(( ((($(1)*1000)+$(or $(2),0))*1000)+$(or $(3),0) )) \
+		&& echo $(GO_VERSION) \
+	))
+
 # run the golangci-linter in CI if enabled above
 ifeq ($(CI), true)
 GO_EXTRA_LINT += _go-golangci-lint-ci
 else
 GO_EXTRA_LINT += go-golangci-lint
+endif
+
+# FIPS
+ifeq ($(GO_FIPS_ENABLE_INPLACE),true)
+ifneq (,$(call go-version-at-least,1,19))
+GO_FIPS_ENV_VARS = CGO_ENABLED=1 GOOS=linux GOARCH=amd64
+GO_EXPERIMENTS += boringcrypto
+endif
 endif
 
 # flags for confluent-kafka-go-dev / librdkafka on alpine
@@ -72,6 +100,19 @@ endif
 # Build the listed main packages and everything they import into executables
 ifeq ($(GO_STATIC),true)
 GO_EXTRA_FLAGS += -tags static_all -buildmode=exe
+endif
+
+# Improve reproducability of Go binaries by disabling behaviors that embed
+# details of the build environment (like working directory) in the executable.
+ifeq ($(CI),true)
+# Currently gated to CI jobs due to concerns about debugger compatibility with
+# trimmed paths.
+ifneq (,$(call go-version-at-least,1,19))
+# Gated on Go 1.19 because this version fixed the behavior of 'go generate'
+# when running generators built with -trimpath.
+# https://tip.golang.org/doc/go1.19
+GO_EXTRA_FLAGS += -trimpath
+endif
 endif
 
 # List of all go files in project
@@ -203,7 +244,8 @@ fmt:
 build-go: go-bindata $(GO_BINS)
 $(GO_BINS):
 	$(eval split := $(subst =, ,$(@)))
-	$(GO) build $(GO_USE_VENDOR) $(GO_MOD_DOWNLOAD_MODE_FLAG) -o $(GO_OUTDIR)/$(word 2,$(split)) -ldflags "$(GO_LDFLAGS)" $(GO_EXTRA_FLAGS) $(word 1,$(split))
+	$(if $(GO_EXPERIMENTS),GOEXPERIMENT=$(subst $(_space),$(_comma),$(GO_EXPERIMENTS))) \
+	$(GO_FIPS_ENV_VARS) $(GO) build $(GO_USE_VENDOR) $(GO_MOD_DOWNLOAD_MODE_FLAG) -o $(GO_OUTDIR)/$(word 2,$(split)) -ldflags "$(GO_LDFLAGS)" $(GO_EXTRA_FLAGS) $(word 1,$(split))
 
 .PHONY: test-go
 ## Run Go Tests and Vet code
@@ -246,7 +288,7 @@ ifeq ($(GO_TEST_PACKAGE_ARGS),./...)
 endif
 	test -f $(GO_COVERAGE_PROFILE) && truncate -s 0 $(GO_COVERAGE_PROFILE) || true
 	go test -c $(GO_MOD_DOWNLOAD_MODE_FLAG) $(GO_TEST_PACKAGE_ARGS) -gcflags='all=-N -l'
-	$(eval go_test_binary := $(shell echo "$(GO_TEST_PACKAGE_ARGS)" | awk -F/ '{print "./"$$3"."$$2}'))
+	$(eval go_test_binary := $(shell echo "$(GO_TEST_PACKAGE_ARGS)" | awk -F/ '{print "./"$$(NF - 1)"."$$2}'))
 	$(eval prefixed_go_test_args := $(shell echo "$(GO_TEST_ARGS)" |  sed 's/-/-test./g'))
 	$(eval goland_dlv_cmd := $(GOLAND_PLUGIN_PATH)/lib/dlv/mac/dlv --listen=0.0.0.0:$(GOLAND_PORT) --headless=true --api-version=2 --check-go-version=false --only-same-user=false)
 	set -o pipefail && go tool test2json -t ${goland_dlv_cmd} exec ${go_test_binary} -- ${prefixed_go_test_args} | $(MK_INCLUDE_BIN)/decode_test2json.py

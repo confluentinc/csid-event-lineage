@@ -16,7 +16,7 @@ from tests.test_utils import *
 def test_create_pr():
     output = run_cmd("make diff-mk-include")
     assert_in_output(output, [
-        "gh pr create -B master -b update mk-include -t chore: update mk-include"
+        "update cc-mk-include finished, open update PR"
     ])
 
 

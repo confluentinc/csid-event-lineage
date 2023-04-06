@@ -10,7 +10,7 @@ DEPLOYER_DOWNSTREAM_DEPS := obs-helm
 RELEASE_PRECOMMIT := pre-release-check
 
 DOCKER_BUILD_MULTIARCH := true
-
+ALLOW_BUILD_LATEST_TAG := true
 CI_TEST := true
 
 include ./mk-include/cc-begin.mk

@@ -55,7 +55,7 @@ def test_build_docker_override_two():
     output = run_cmd("make -f Makefile_test_BUILD_DOCKER_OVERRIDE build")
     assert_not_in_output(output, ["mvnw"])
     assert_in_output(output, [
-        "mvn --no-transfer-progress --batch-mode", "BUILD SUCCESS",
+        "mvn --no-transfer-progress  --batch-mode", "BUILD SUCCESS",
         "docker image save"
     ])
 

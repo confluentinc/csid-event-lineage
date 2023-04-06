@@ -105,8 +105,12 @@ BUMPED_CLEAN_VERSION := $(word 1,$(split_version)).$(bump).0
 else ifeq ($(BUMP),patch)
 bump := $(shell expr $(word 3,$(split_version)) + 1)
 BUMPED_CLEAN_VERSION := $(word 1,$(split_version)).$(word 2,$(split_version)).$(bump)
+else ifeq ($(BUMP),none)
+BUMPED_CLEAN_VERSION := $(word 1,$(split_version)).$(word 2,$(split_version)).$(word 3,$(split_version))
 endif
 
+BUMPED_CLEAN_BASE_VERSION := ${BUMPED_CLEAN_VERSION}
+BUMPED_BASE_VERSION := v${BUMPED_CLEAN_BASE_VERSION}
 BUMPED_CLEAN_VERSION := $(BUMPED_CLEAN_VERSION)$(VERSION_POST)
 BUMPED_VERSION := v$(BUMPED_CLEAN_VERSION)
 
@@ -119,6 +123,8 @@ show-version:
 	@echo version no v: $(VERSION_NO_V)
 	@echo clean version: $(CLEAN_VERSION)
 	@echo version bump: $(BUMP) $(_auto_bump_msg)
+	@echo bumped clean base version: $(BUMPED_CLEAN_BASE_VERSION)
+	@echo bumped base version: $(BUMPED_BASE_VERSION)
 	@echo bumped version: $(BUMPED_VERSION)
 	@echo bumped clean version: $(BUMPED_CLEAN_VERSION)
 	@echo version post append: $(VERSION_POST)
@@ -129,11 +135,14 @@ ifeq ($(CI_TEST),true)
 endif
 
 .PHONY: tag-release
+ifeq ($(MAVEN_NANO_VERSION), true)
+tag-release: mvn-push-nanoversion-tag
+else
 tag-release:
 	$(GIT) tag $(BUMPED_VERSION)
 	$(GIT) push $(GIT_REMOTE_NAME) $(BUMPED_VERSION)
-	# version bump commit may fail if there are queueing builds
 	$(GIT) push $(GIT_REMOTE_NAME) $(RELEASE_BRANCH) || true
+endif
 
 .PHONY: get-release-image
 get-release-image:

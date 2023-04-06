@@ -3,23 +3,45 @@ HALYARD_DEPLOYER_ADDRESS ?= halyard-deployer.prod.halyard.confluent.cloud:9090
 HALYARD_RELEASE_ADDRESS ?= halyard-release.prod.halyard.confluent.cloud:9090
 HALYARD_RENDERER_ADDRESS ?= halyard-renderer.prod.halyard.confluent.cloud:9090
 
+# Addresses to halyard services in us-gov cloud
+HALYARD_ADDRESS_US_GOV ?= prod.halyard.confluentgov-internal.com:443
+
 # Determine which halyard services to auto bump source version
 # List of halyard service files, default all.  All environments in these files will be bumped
 HALYARD_SERVICE_FILES ?= $(wildcard .halyard/*.yaml)
+
 # List of halyard service files with environments, defaults none.
 # NOTE: This disables HALYARD_SERVICE_FILES, it's either full auto or full manual.
 # NOTE: Apply always applies all files in HALYARD_SERVICE_FILES since it won't create new env
 #       versions if there's nothing changed.
 # Format: .halyard/service.yaml=env1 .halyard/service.yaml=env2 etc.
 HALYARD_SERVICE_FILES_ENVS ?=
+
+# Determine which halyard services in us-gov cloud to auto bump source version
+# List of halyard service files, default all.  All environments in these files will be bumped
+HALYARD_SERVICE_FILES_US_GOV ?= $(wildcard .halyard-us-gov/*.yaml)
+
+# List of halyard service files with environments for us-gov cloud, defaults none.
+# NOTE: This disables HALYARD_SERVICE_FILES_US_GOV, it's either full auto or full manual.
+# NOTE: Apply always applies all files in HALYARD_SERVICE_FILES_US_GOV since it won't create new env
+#       versions if there's nothing changed.
+# Format: .halyard-us-gov/service.yaml=env1 .halyard-us-gov/service.yaml=env2 etc.
+HALYARD_SERVICE_FILES_ENVS_US_GOV ?=
+
 # Version to set source version to, defaults to current clean version without a v.
 HALYARD_SOURCE_VERSION ?= $(BUMPED_CLEAN_VERSION)
 # List of service/environments to automatically install on release, defaults none.
 # Format: service=env service=env2 service2=env
 HALYARD_INSTALL_SERVICE_ENVS ?=
+
 # Cluster type to deploy services via halyard. Value must be be one of 'satellite' or 'mothership'
 # If value not specified halyard will traverse thru all clusters which is very inefficient for mothersip services deployment.
 HALYARD_INSTALL_CLUSTER_TYPE ?=
+
+# List of service/environments to automatically associate with prod on release, defaults none.
+# Format: service=env service=env2 service2=env
+HALYARD_ASSOCIATE_SERVICE_ENVS ?=
+
 # Controls whether or not halyard will wait for the agent to report that the service is RUNNNIG before declaring a successful installation
 # - When "always halyard will wait
 # - When "never", halyard will not wait
@@ -37,9 +59,13 @@ CLUSTER_ENV ?= ""
 ifeq ($(CI),true)
 # we need ?= to allow overridding HAL_TMPDIR for CPD gating
 HAL_TMPDIR ?= $(shell mktemp -d 2>/dev/null || mktemp -d -t 'halyard')
+GIT_SHA ?= $(SEMAPHORE_GIT_SHA)
+GIT_REPO ?= $(SEMAPHORE_GIT_REPO_SLUG)
 else
 # when we aren't running CI, just put output in a temporary directory
 HAL_TMPDIR ?= .halctl/tmp
+GIT_SHA ?= ""
+GIT_REPO ?= ""
 endif
 # we need := for immediate assignment rather than deferred.
 HAL_TMPDIR := $(HAL_TMPDIR)
@@ -71,6 +97,18 @@ _halctl_docker_opts += -e VAULT_TOKEN=$(shell cat $(HOME)/.vault-token)
 endif
 HALCTL ?= docker run $(_halctl_docker_opts) $(HALYARD_IMAGE) $(_halctl_opts)
 
+_halctl_opts_us_gov := --deployer-address $(HALYARD_ADDRESS_US_GOV)
+_halctl_opts_us_gov += --release-address $(HALYARD_ADDRESS_US_GOV)
+_halctl_opts_us_gov += --renderer-address $(HALYARD_ADDRESS_US_GOV)
+_halctl_opts_us_gov += --vault-oidc-role halyard-prod-us-gov
+_halctl_opts_us_gov += --vault-login-path auth/app/prod-us-gov/login
+_halctl_opts_us_gov += $(HALCTL_ARGS)
+
+HALCTL_US_GOV ?= docker run $(_halctl_docker_opts) $(HALYARD_IMAGE) $(_halctl_opts_us_gov)
+
+# Allows override of batch size - Default to 100
+HALYARD_BATCH_SIZE ?= 100
+
 # YQ docker image. Inspired by cc-releases
 # `user=root` is required to fix permission issues when updating the yaml file, see
 # https://github.com/mikefarah/yq/blob/master/README.md#running-as-root
@@ -78,7 +116,7 @@ YQ ?= docker run --rm -i -v "${PWD}":/workdir --user root mikefarah/yq
 
 _deploy_sh_options := --entrypoint /etc/halyard/scripts/deploy.sh
 _deploy_sh_options += $(HALYARD_IMAGE)
-_deploy_sh_options += -size 100
+_deploy_sh_options += -size $(HALYARD_BATCH_SIZE)
 _deploy_sh_options += -apply
 
 ifneq ($(HALYARD_CHECK_AGENT_REPORTED_STATE),)
@@ -143,17 +181,21 @@ HALYARD_VERSION_IDENTIFIER = "halyardVersion="
 .PHONY: show-halyard
 ## Show Halyard Variables
 show-halyard:
-	@echo "HALYARD_SERVICE_FILES:        $(HALYARD_SERVICE_FILES)"
-	@echo "HALYARD_SERVICE_FILES_ENVS:   $(HALYARD_SERVICE_FILES_ENVS)"
-	@echo "HALYARD_INSTALL_SERVICE_ENVS: $(HALYARD_INSTALL_SERVICE_ENVS)"
-	@echo "HALYARD_SOURCE_VERSION:       $(HALYARD_SOURCE_VERSION)"
-	@echo "HALCTL:                       $(HALCTL)"
-	@echo "HALYARD_AUTO_DEPLOY_ENV:      $(HALYARD_AUTO_DEPLOY_ENV)"
-	@echo "HALYARD_STABLE_PREPROD_ENV:   $(HALYARD_STABLE_PREPROD_ENV)"
-	@echo "HALYARD_PROD_ENV:             $(HALYARD_PROD_ENV)"
-	@echo "HAL_TMPDIR:                   $(HAL_TMPDIR)"
-	@echo "DEPLOY_SH:                    $(DEPLOY_SH)"
-	@echo "YQ:                           $(YQ)"
+	@echo "HALYARD_SERVICE_FILES:               $(HALYARD_SERVICE_FILES)"
+	@echo "HALYARD_SERVICE_FILES_ENVS:          $(HALYARD_SERVICE_FILES_ENVS)"
+	@echo "HALYARD_INSTALL_SERVICE_ENVS:        $(HALYARD_INSTALL_SERVICE_ENVS)"
+	@echo "HALYARD_ASSOCIATE_SERVICE_ENVS:      $(HALYARD_ASSOCIATE_SERVICE_ENVS)"
+	@echo "HALYARD_SERVICE_FILES_US_GOV:        $(HALYARD_SERVICE_FILES_US_GOV)"
+	@echo "HALYARD_SERVICE_FILES_ENVS_US_GOV:   $(HALYARD_SERVICE_FILES_ENVS_US_GOV)"
+	@echo "HALYARD_SOURCE_VERSION:              $(HALYARD_SOURCE_VERSION)"
+	@echo "HALCTL:                              $(HALCTL)"
+	@echo "HALCTL_US_GOV:                       $(HALCTL_US_GOV)"
+	@echo "HALYARD_AUTO_DEPLOY_ENV:             $(HALYARD_AUTO_DEPLOY_ENV)"
+	@echo "HALYARD_STABLE_PREPROD_ENV:          $(HALYARD_STABLE_PREPROD_ENV)"
+	@echo "HALYARD_PROD_ENV:                    $(HALYARD_PROD_ENV)"
+	@echo "HAL_TMPDIR:                          $(HAL_TMPDIR)"
+	@echo "DEPLOY_SH:                           $(DEPLOY_SH)"
+	@echo "YQ:                                  $(YQ)"
 
 
 # target for caching the halyard docker image on semaphore
@@ -185,10 +227,15 @@ halyard-set-source-version: $(HALYARD_SERVICE_FILES:%=set.%)
 else
 halyard-set-source-version: $(HALYARD_SERVICE_FILES_ENVS:%=set.%)
 endif
+ifeq ($(HALYARD_SERVICE_FILES_ENVS_US_GOV),)
+halyard-set-source-version: $(HALYARD_SERVICE_FILES_US_GOV:%=set.%)
+else
+halyard-set-source-version: $(HALYARD_SERVICE_FILES_ENVS_US_GOV:%=set.%)
+endif
 
 .PHONY: $(HALYARD_SERVICE_FILES:%=set.%)
 $(HALYARD_SERVICE_FILES:%=set.%): $(HOME)/.halctl
-	$(HALCTL) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(@:set.%=%)
+	$(HALCTL) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(@:set.%=%) -c $(GIT_SHA) -r $(GIT_REPO)
 	git add $(@:set.%=%)
 	@$(eval env_path := $(shell dirname $(@:set.%=%))/envs/)
 	@if [[ -d $(env_path) ]]; then \
@@ -199,7 +246,27 @@ $(HALYARD_SERVICE_FILES:%=set.%): $(HOME)/.halctl
 $(HALYARD_SERVICE_FILES_ENVS:%=set.%): $(HOME)/.halctl
 	@$(eval fpath := $(word 1,$(subst =, ,$(@:set.%=%))))
 	@$(eval env := $(word 2,$(subst =, ,$(@:set.%=%))))
-	$(HALCTL) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(fpath) -e $(env)
+	$(HALCTL) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(fpath) -e $(env) -c $(GIT_SHA) -r $(GIT_REPO)
+	git add $(fpath)
+	@$(eval env_path := $(shell dirname $(fpath))/envs/)
+	@if [[ -d $(env_path) ]]; then \
+		git add --all $(env_path); \
+	fi;
+
+.PHONY: $(HALYARD_SERVICE_FILES_US_GOV:%=set.%)
+$(HALYARD_SERVICE_FILES_US_GOV:%=set.%): $(HOME)/.halctl
+	$(HALCTL_US_GOV) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(@:set.%=%)
+	git add $(@:set.%=%)
+	@$(eval env_path := $(shell dirname $(@:set.%=%))/envs/)
+	@if [[ -d $(env_path) ]]; then \
+		git add --all $(env_path); \
+	fi;
+
+.PHONY: $(HALYARD_SERVICE_FILES_ENVS_US_GOV:%=set.%)
+$(HALYARD_SERVICE_FILES_ENVS:%=set.%): $(HOME)/.halctl
+	@$(eval fpath := $(word 1,$(subst =, ,$(@:set.%=%))))
+	@$(eval env := $(word 2,$(subst =, ,$(@:set.%=%))))
+	$(HALCTL_US_GOV) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(fpath) -e $(env)
 	git add $(fpath)
 	@$(eval env_path := $(shell dirname $(fpath))/envs/)
 	@if [[ -d $(env_path) ]]; then \
@@ -212,6 +279,37 @@ halyard-apply-services: $(HALYARD_SERVICE_FILES:%=apply.%)
 .PHONY: $(HALYARD_SERVICE_FILES:%=apply.%)
 $(HALYARD_SERVICE_FILES:%=apply.%): $(HOME)/.halctl
 	$(HALCTL) release apply -f $(@:apply.%=%) --output-dir $(HAL_TMPDIR)
+
+.PHONY: halyard-apply-services-us-gov
+halyard-apply-services-us-gov: $(HALYARD_SERVICE_FILES_US_GOV:%=apply.%)
+
+.PHONY: $(HALYARD_SERVICE_FILES_US_GOV:%=apply.%)
+$(HALYARD_SERVICE_FILES_US_GOV:%=apply.%): $(HOME)/.halctl
+	$(HALCTL_US_GOV) release apply -f $(@:apply.%=%) --output-dir $(HAL_TMPDIR)
+
+
+.PHONY: halyard-associate-us-gov-version-with-prod
+halyard-associate-us-gov-version-with-prod: $(HALYARD_ASSOCIATE_SERVICE_ENVS:%=associate.%)
+
+.PHONY:$(HALYARD_ASSOCIATE_SERVICE_ENVS:%=associate.%)
+$(HALYARD_ASSOCIATE_SERVICE_ENVS:%=associate.%): $(HOME)/.halctl
+	$(eval svc := $(word 1,$(subst =, ,$(@:associate.%=%))))
+	$(eval us-gov-env := $(word 2,$(subst =, ,$(@:associate.%=%))))
+	$(eval prod_latest_version := $(HALCTL) release svc env ver get-latest-version $(svc) prod)
+	$(eval prod_us_gov_latest_version := $(HALCTL_US_GOV) release svc env ver get-latest-version $(svc) $(us-gov-env))
+	$(HALCTL) release svc relate-environment-versions $(svc) --env-ver prod=$(prod_latest_version) --env-ver $(us-gov-env)=$(prod_us_gov_latest_version) --referenceEnv prod
+
+.PHONY: halyard-get-associated-us-gov-version
+halyard-get-associated-us-gov-version: $(HALYARD_ASSOCIATE_SERVICE_ENVS:%=get-associated.%)
+
+.PHONY:$(HALYARD_ASSOCIATE_SERVICE_ENVS:%=get-associated.%)
+$(HALYARD_ASSOCIATE_SERVICE_ENVS:%=get-associated.%): $(HOME)/.halctl
+	$(eval svc := $(word 1,$(subst =, ,$(@:get-associated.%=%))))
+	$(eval us-gov-env := $(word 2,$(subst =, ,$(@:get-associated.%=%))))
+	$(eval prod_latest_version := $(HALCTL) release svc env ver get-latest-version $(svc) prod)
+	$(HALCTL) release svc env ver get-related-version-for-env $(svc) prod $(prod_latest_version) --forEnv $(us-gov-env)
+
+halyard-apply-services-us-gov: $(HALYARD_SERVICE_FILES_US_GOV:%=apply.%)
 
 cc-releases:
 	git clone git@github.com:confluentinc/cc-releases.git
@@ -338,7 +436,7 @@ unshallow-git-repo:
 halyard-auto-deploy-service: $(HOME)/.halctl
 	$(eval localSvc := $(word 1,$(subst =, ,$(HALYARD_AUTO_DEPLOY_ENV))))
 	$(eval localEnv := $(word 2,$(subst =, ,$(HALYARD_AUTO_DEPLOY_ENV))))
-	$(eval halyard_ver := $(shell set -o pipefail && $(HALCTL) release service env ver list $(localSvc) $(localEnv) -ojson | jq -r '.[] | .version + " " +.sourceVersion' | grep -E '^[0-9]+ [0-9]\.[0-9]+\.0$$' | cut -d ' ' -f 1 | sort -n | tail -n 1))
+	$(eval halyard_ver := $(shell set -o pipefail && $(HALCTL) release service env ver list $(localSvc) $(localEnv) -ojson | jq -r '.[] | .version + " " +.sourceVersion' | grep -E '^[0-9]+ [0-9]+\.[0-9]+\.[0-9]+$$' | cut -d ' ' -f 1 | sort -n | tail -n 1))
 	@if [ -z $(HALYARD_AUTO_DEPLOY_CLUSTER_LIST) ]; then \
 		echo "Going to deploy $(localSvc) $(localEnv) $(halyard_ver)"; \
 		svc=$(localSvc) env=$(localEnv) ver=$(halyard_ver) sleep=$(DEFAULT_SLEEP_DURATION) $(MAKE) $(MAKE_ARGS) halyard-deploy-service; \
