@@ -34,11 +34,13 @@ global_job_config:
       - sem-version java 11
 blocks:
   - name: Build
+    dependencies: []
     task:
       jobs:
         - name: Build without Tests
           commands:
             - ./gradlew clean build -x test
+          parallelism: 1
   - name: Test
     dependencies: [Build]
     task:
