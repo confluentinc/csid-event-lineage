@@ -33,13 +33,19 @@ global_job_config:
       - make docker-login-ci
       - sem-version java 11
 blocks:
-  - name: Build and Test
+  - name: Build
     task:
       jobs:
-        - name: Build and Test
+        - name: Build without Tests
           commands:
-            - ./gradlew clean build test
-          parallelism: 1
+            - ./gradlew clean build -x test
+  - name: Test
+    dependencies: [Build]
+    task:
+      jobs:
+        - name: Unit Tests
+          commands:
+            - ./gradlew test
       epilogue:
         always:
           commands:
