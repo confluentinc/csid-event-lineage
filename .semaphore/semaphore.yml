@@ -38,7 +38,7 @@ blocks:
       jobs:
         - name: Build without Tests
           commands:
-            -./gradlew clean build -x test
+            - ./gradlew clean build -x test
           parallelism: 1
   - name: Test
     dependencies: [Build]
@@ -46,7 +46,7 @@ blocks:
       jobs:
         - name: Unit Tests
           commands:
-            -./gradlew test
+            - ./gradlew test
       epilogue:
         always:
           commands:
