@@ -3,6 +3,7 @@ name: build-test-release
 agent:
   machine:
     type: s1-prod-ubuntu20-04-amd64-1
+
 auto_cancel:
   running:
     when: "branch != 'master'"
@@ -14,24 +15,28 @@ global_job_config:
   prologue:
     commands:
       - chmod 400 ~/.ssh/id_rsa
+      - sem-version java unknown
       - checkout
+      - ( cd $HOME && vault kv get -field=script v1/ci/kv/semaphore2/netrc |bash - )
       - make install-vault
       - . mk-include/bin/vault-setup
-      - . vault-sem-get-secret semaphore-secrets-global
       - . vault-sem-get-secret aws_credentials
-      - . vault-sem-get-secret dockerhub-semaphore-cred-ro
-      - . vault-sem-get-secret ssh_id_rsa
-      - . vault-sem-get-secret netrc
-      - . vault-sem-get-secret ssh_config
       - . vault-sem-get-secret gitconfig
+      - . vault-sem-get-secret ssh_id_rsa
+      - . vault-sem-get-secret ssh_config
+      - . vault-sem-get-secret semaphore-secrets-global
       - . vault-sem-get-secret maven-settings
-      - . vault-sem-get-secret gradle_properties
-      - . vault-sem-get-secret csid-bundles
-      - chmod 700 ~/.m2/settings.xml
-      - chmod 700 ~/.netrc
+      - . vault-sem-get-secret cpd_gcloud
+      - . vault-sem-get-secret ci-reporting
+      - . vault-sem-get-secret v1/ci/kv/service-foundations/cc-mk-include
+      - . vault-sem-get-secret dockerhub-semaphore-cred-ro
+      - exec &> >(tee -a build.log)
       - make init-ci
-      - make docker-login-ci
-      - sem-version java 11
+  epilogue:
+    always:
+      commands:
+        - make epilogue-ci
+
 blocks:
   - name: Build and Test
     task:
