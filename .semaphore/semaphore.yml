@@ -25,7 +25,6 @@ global_job_config:
       - . vault-sem-get-secret gitconfig
       - . vault-sem-get-secret maven-settings
       - . vault-sem-get-secret gradle_properties
-      - . vault-sem-get-secret csid-bundles
       - chmod 700 ~/.m2/settings.xml
       - chmod 700 ~/.netrc
       - make init-ci
