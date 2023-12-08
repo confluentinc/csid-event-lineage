@@ -3,6 +3,7 @@ name: build-test-release
 agent:
   machine:
     type: s1-prod-ubuntu20-04-amd64-1
+
 auto_cancel:
   running:
     when: "branch != 'master'"
@@ -11,15 +12,19 @@ execution_time_limit:
 global_job_config:
   prologue:
     commands:
+      - sem-version java unknown
       - checkout
+      - make show-args
       - . vault-setup
-      - . vault-sem-get-secret gradle_properties
-      - . vault-sem-get-secret csid-bundles
-      - chmod 700 ~/.m2/settings.xml
-      - chmod 700 ~/.netrc
+      - . vault-sem-get-secret cpd_gcloud
+      - . vault-sem-get-secret ci-reporting
+      - . vault-sem-get-secret v1/ci/kv/service-foundations/cc-mk-include
       - make init-ci
-      - make docker-login-ci
-      - sem-version java 11
+  epilogue:
+    always:
+      commands:
+        - make epilogue-ci
+
 blocks:
   - name: Build and Test
     task:
@@ -45,3 +50,7 @@ promotions:
       when: result = 'passed' and tag =~ '.*'
   - name: Publish to S3
     pipeline_file: publish_to_s3.yml
+queue:
+  - when: "branch != 'master'"
+    processing: parallel
+
