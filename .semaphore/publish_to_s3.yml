@@ -8,20 +8,10 @@ agent:
     machine:
         type: s1-prod-ubuntu20-04-amd64-1
 global_job_config:
-    secrets:
-        - name: vault_sem2_approle
     prologue:
         commands:
-            - chmod 400 ~/.ssh/id_rsa
             - checkout
-            - make install-vault
-            - . mk-include/bin/vault-setup
-            - . vault-sem-get-secret semaphore-secrets-global
-            - . vault-sem-get-secret dockerhub-semaphore-cred-ro
-            - . vault-sem-get-secret ssh_id_rsa
-            - . vault-sem-get-secret netrc
-            - . vault-sem-get-secret ssh_config
-            - . vault-sem-get-secret gitconfig
+            - . vault-setup
             - . vault-sem-get-secret csid-bundles-dynamic
             - . vault-sem-get-secret gradle_properties
             - chmod 700 ~/.gradle/gradle.properties
