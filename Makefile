@@ -66,4 +66,5 @@ MK_INCLUDE_VERSION ?= v0.957.0
 ### END MK-INCLUDE UPDATE ###
 include ./mk-include/cc-begin.mk
 include ./mk-include/cc-vault.mk
+include ./mk-include/cc-sonarqube.mk
 include ./mk-include/cc-end.mk
