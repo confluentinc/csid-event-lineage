@@ -12,7 +12,7 @@ execution_time_limit:
 global_job_config:
   prologue:
     commands:
-      - sem-version java unknown
+      - sem-version java 11
       - checkout
       - make show-args
       - . vault-setup
