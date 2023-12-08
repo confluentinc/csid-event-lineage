@@ -12,8 +12,7 @@ global_job_config:
         commands:
             - checkout
             - . vault-setup
-            - . vault-sem-get-secret csid-bundles
-            - . vault-sem-get-secret csid_aws_credentials
+            - . vault-sem-get-secret csid-bundles-dynamic
             - . vault-sem-get-secret gradle_properties
             - chmod 700 ~/.gradle/gradle.properties
             - chmod 700 ~/.netrc

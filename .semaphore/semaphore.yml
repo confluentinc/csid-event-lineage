@@ -19,6 +19,7 @@ global_job_config:
       - . vault-sem-get-secret cpd_gcloud
       - . vault-sem-get-secret ci-reporting
       - . vault-sem-get-secret v1/ci/kv/service-foundations/cc-mk-include
+      - . vault-sem-get-secret csid-bundles-dynamic
       - make init-ci
   epilogue:
     always:
