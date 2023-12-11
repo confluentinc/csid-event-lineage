@@ -1,6 +1,6 @@
 name: csid-event-lineage
 lang: java
-lang_version: unknown
+lang_version: 11
 git:
   enable: true
 github:
