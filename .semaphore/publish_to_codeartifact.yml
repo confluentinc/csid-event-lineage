@@ -9,7 +9,6 @@ global_job_config:
     commands:
       - checkout
       - . vault-setup
-      - . vault-sem-get-secret gradle_properties
       - chmod 700 ~/.netrc
       - make init-ci
       - sem-version java 11
