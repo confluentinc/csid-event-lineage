@@ -45,7 +45,7 @@ blocks:
     dependencies: [Build]
     task:
       jobs:
-        - name: Unit Tests
+        - name: Tests
           commands:
             - ./gradlew test
       epilogue:
