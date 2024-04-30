@@ -1,3 +1,9 @@
+# This file is managed by ServiceBot plugin - Semaphore. The content in this file is created using a common
+# template and configurations in service.yml.
+# Any modifications made to version, name, agent, and global_job_config will be overwritten by the generated
+# content in nightly runs. Code changes made to the remaining sections will not be affected.
+# For more information, please refer to the page:
+# https://confluentinc.atlassian.net/wiki/spaces/Foundations/pages/2871296194/Add+SemaphoreCI
 version: v1.0
 name: build-test-release
 agent:
@@ -9,6 +15,10 @@ auto_cancel:
     when: "branch != 'master'"
 execution_time_limit:
   hours: 1
+queue:
+  - when: "branch != 'master'"
+    processing: parallel
+
 global_job_config:
   prologue:
     commands:
@@ -49,7 +59,3 @@ promotions:
       when: result = 'passed' and tag =~ '.*'
   - name: Publish to S3
     pipeline_file: publish_to_s3.yml
-queue:
-  - when: "branch != 'master'"
-    processing: parallel
-
