@@ -2,7 +2,7 @@ version: v1.0
 name: Publish to CodeArtifact
 agent:
   machine:
-    type: s1-prod-ubuntu20-04-amd64-1
+    type: s1-prod-ubuntu24-04-amd64-1
     os_image: ''
 global_job_config:
   prologue:
