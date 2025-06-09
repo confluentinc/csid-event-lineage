@@ -34,3 +34,5 @@ for setting up kafka trace propagation to continue single trace across produce /
 Both development of extension and installation requires compatible version of main OpenTelemetry Java Instrumentation.
 
 Current build is targeting v1.13.0 of OpenTelemetry instrumentation.
+---
+Adding
