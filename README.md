@@ -1,25 +1,54 @@
 # OpenTelemetry Instrumentation Extensions for Kafka Clients and Kafka Streams
 
-⚠️ **Disclaimer**  
+⚠️ **Disclaimer**
 
-This repository is not actively maintained and is intended solely as an internal proof of concept. It is provided *as-is*, without any guarantees of support, updates, or compatibility with future versions of OpenTelemetry or related tooling. 
+This repository is not actively maintained and is intended solely as an internal proof of concept. It is provided *as-is*, without any guarantees of support, updates, or compatibility with future versions of OpenTelemetry or related tooling.
 
 This is not an official project and does not represent a supported product or endorsed integration. Users are welcome to fork, adapt, and use this code at their own discretion, but should do so with caution and conduct their own validation before use in production environments. Use of this code is entirely at your own risk.
 
-## Introduction
+---
 
-This repository contains **OpenTelemetry Instrumentation extensions** for Kafka Clients and Kafka Streams. The purpose of these extensions is to **capture key/value payloads** as they are consumed and produced by applications.
+## Overview
 
-> Note: Actual `Span` creation and propagation is handled by the official OpenTelemetry Kafka Instrumentation and Agent.
+Modern event-driven architectures rely heavily on Kafka to stream critical business events. However, traditional observability tools often fall short when it comes to tracing **data payload lineage** — particularly **key/value pairs** — across distributed Kafka producers and consumers.
 
-- 📚 [OpenTelemetry Documentation](https://opentelemetry.io/)
-- 💻 [OpenTelemetry GitHub](https://github.com/open-telemetry)
+This repository provides **OpenTelemetry Java agent extensions** to enrich existing Kafka instrumentation by **capturing and forwarding payload-level metadata** (i.e. message keys and values) for applications using:
 
-## Installation
+* **Kafka Producer and Consumer clients**
+* **Kafka Streams**
 
-To enable the extension, the application should be run with both the **OpenTelemetry Java agent** and the **custom extension JAR**:
+This extension is particularly useful in scenarios where you want to:
 
-```
+* Trace **end-to-end data flow across services**
+* Understand **event transformations** or **drops** across Kafka topics
+* Enable **compliance**, **debugging**, or **security auditing** by inspecting message content
+
+> *Note: This extension does **not** create or manage spans. Span creation, propagation, and lifecycle handling is provided by the [official OpenTelemetry Kafka Instrumentation](https://github.com/open-telemetry/opentelemetry-java-instrumentation).*
+
+---
+
+## Problem It Solves
+
+By default, OpenTelemetry’s Kafka instrumentation provides visibility into *message flow* (e.g. spans for `send` or `poll`), but not into *what* is being sent—**message payloads, keys, and relevant context** often remain opaque.
+
+This project solves that gap by allowing users to:
+
+* Intercept and record Kafka **key/value pairs** on both produce and consume events
+* Tie payloads to existing OpenTelemetry spans for downstream ingestion and analysis
+* Enable **payload-aware tracing** to enrich metrics, logs, and traces with meaningful business data
+
+---
+
+## Quick Start
+
+To use this extension, you'll need:
+
+1. The official **OpenTelemetry Java agent**
+2. This repository's **custom instrumentation extension JAR**
+
+### Sample Launch Command
+
+```bash
 java \
 -javaagent:/path/to/agent/opentelemetry-javaagent-all.jar \
 -Dotel.instrumentation.kafka.experimental-span-attributes=true \
@@ -28,34 +57,49 @@ java \
 -jar application.jar
 ```
 
-### Key VM Options
-
-These options ensure **trace context is propagated** across produce and consume events:
+### Required JVM Options
 
 ```bash
 -Dotel.instrumentation.kafka.experimental-span-attributes=true
 -Dotel.instrumentation.common.experimental.suppress-messaging-receive-spans=true
 ```
 
-This setup avoids starting a new trace on each consume and instead continues a single trace across the full lifecycle, maintaining linkage between producer and consumer spans.
+These ensure that context is **propagated end-to-end** across services without duplicating spans on each consume call.
 
-## Compatible OpenTelemetry Versions
+---
 
-This extension is built and tested against:
+## Compatibility
+
+This extension was developed and tested against:
 
 * **OpenTelemetry Java Instrumentation v1.13.0**
 
-Make sure both your extension and main OpenTelemetry agent match compatible versions for proper operation.
+Ensure the extension version aligns with the OpenTelemetry agent version in your environment for reliable behaviour.
 
-## Tutorial Repo: Credit Card Tracing Demo
+---
 
-This repository also includes a **simple credit card tracing example**, demonstrating a practical use case aligned with the proposed **Event Lineage reference architecture**.
+## Example: Credit Card Tracing Demo
 
-To learn more, visit the full [Event Lineage demo repository](https://github.com/confluentinc/csid-event-lineage-demos).
+This repo includes a tutorial project illustrating **event lineage tracing** with a simulated credit card transaction pipeline. It's intended to show how payload-level data can be captured and visualised in distributed traces.
 
-> Presentation slides for this demo are available in the `presentations/` directory.
+Explore the full [event lineage demo](https://github.com/confluentinc/csid-event-lineage-demos) to see:
 
-### Kafka Connect Note
+* Full trace propagation through Kafka Producer → Kafka Streams → Kafka Consumer
+* Captured payloads included in trace metadata
+* Practical use cases like fraud detection, data loss debugging, or SLA tracking
 
-This version of the demo **does not use Kafka Connect** in the data flow. For a version that **includes Kafka Connect**, please refer to the [`demo-with-connect`](https://github.com/confluentinc/csid-event-lineage-demos/tree/demo-with-connect) branch.
+Presentation slides are available under [`presentations/`](./presentations).
+
+> Looking for a version that includes **Kafka Connect**? Check the [`demo-with-connect`](https://github.com/confluentinc/csid-event-lineage-demos/tree/demo-with-connect) branch.
+
+---
+
+## Summary
+
+| Feature             | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+|  Payload Capture  | Intercepts key/value records in Kafka clients and streams   |
+|  Span Extension   | Augments existing spans with business metadata              |
+|  Trace Continuity | Preserves end-to-end trace IDs from producer to consumer    |
+|  Demo Included    | Practical lineage use case included via credit card tracing |
 
