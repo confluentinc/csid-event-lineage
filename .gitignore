@@ -1,9 +1,7 @@
-/mk-include
-/.mk-include-timestamp
-# Compiled class file
+# Java class files
 *.class
 
-# Log file
+# Log files
 *.log
 
 # BlueJ files
@@ -12,28 +10,75 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files #
+# Package files
 *.jar
 *.war
-*.nar
 *.ear
-*.zip
-*.tar.gz
-*.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Virtual machine crash logs
 hs_err_pid*
 
-.idea
-*.iml
-/local/
-.DS_Store
-**/.DS_Store
-.gradle
-**/build
-build
+# Eclipse files
+.project
+.classpath
+.settings/
+bin/
 
-# Redundant files for the documentation
-docs_src/_build
-docs/_sources
-docs/_static/fonts
+# IntelliJ IDEA files
+.idea/
+*.iml
+*.iws
+out/
+
+# NetBeans files
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# VS Code
+.vscode/
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Maven
+target/
+
+# Kotlin
+*.kts
+
+# Mac system files
+.DS_Store
+
+# Windows system files
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+
+# JetBrains Rider
+.idea/
+*.sln
+*.user
+.idea/.idea.*
+
+# Logs and generated files
+*.log
+logs/
+*.pid
+*.gz
+*.zip
+
+# Custom local configuration
+local.properties
+
+# OpenTelemetry agent and extensions (if applicable)
+opentelemetry-javaagent*.jar
+instrumentation-*.jar
